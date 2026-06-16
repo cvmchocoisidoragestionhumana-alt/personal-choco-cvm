@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crear usuarios - Personal Chocó</title>
+<style>
+body{font-family:Arial,sans-serif;background:#F7F6F2;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}
+.box{background:#fff;border:1px solid #D3D1C7;border-radius:12px;padding:28px;width:440px;max-width:95vw;}
+h1{font-size:17px;color:#185FA5;margin-bottom:6px;}
+.note{font-size:12px;color:#5F5E5A;background:#F1EFE8;padding:10px;border-radius:6px;margin-bottom:18px;}
+label{font-size:12px;color:#5F5E5A;display:block;margin:10px 0 4px;}
+input,select{width:100%;padding:8px 10px;border:1px solid #D3D1C7;border-radius:6px;font-size:13px;box-sizing:border-box;}
+button{width:100%;margin-top:14px;padding:10px;background:#185FA5;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;}
+.msg{font-size:12px;margin-top:10px;min-height:16px;}
+.ok{color:#27500A;}
+.err{color:#A32D2D;}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;}
+th{background:#185FA5;color:#fff;padding:6px;}
+td{padding:6px;border-bottom:1px solid #eee;}
+.section{margin-top:20px;border-top:1px solid #D3D1C7;padding-top:16px;}
+.section h2{font-size:14px;color:#185FA5;margin-bottom:10px;}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Alta de usuarios — Control de Personal</h1>
+  <div class="note">Usa esta página UNA sola vez para crear los usuarios de RRHH Chocó y RRHH Caracas. Después puedes borrar este archivo del repositorio por seguridad.</div>
+
+  <label>Correo del usuario</label>
+  <input type="email" id="email" placeholder="usuario@cvm.com">
+
+  <label>Contraseña (mínimo 6 caracteres)</label>
+  <input type="password" id="pass" placeholder="contraseña segura">
+
+  <label>Rol</label>
+  <select id="rol">
+    <option value="CHOCO">RRHH Chocó (control total)</option>
+    <option value="CARACAS">RRHH Caracas (solo consulta)</option>
+  </select>
+
+  <button onclick="crearUsuario()">Crear usuario</button>
+  <div class="msg" id="msg"></div>
+
+  <div class="section">
+    <h2>Usuarios existentes</h2>
+    <div id="lista-usuarios"><div style="font-size:12px;color:#5F5E5A;">Inicia sesión como RRHH Chocó para ver la lista.</div></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+function crearUsuario(){
+  const email = document.getElementById('email').value.trim();
+  const pass = document.getElementById('pass').value;
+  const rol = document.getElementById('rol').value;
+  const msg = document.getElementById('msg');
+
+  if(!email||!pass){ msg.innerHTML='<span class="err">Completa todos los campos.</span>'; return; }
+  if(pass.length < 6){ msg.innerHTML='<span class="err">La contraseña debe tener al menos 6 caracteres.</span>'; return; }
+
+  msg.textContent = 'Creando usuario...';
+
+  auth.createUserWithEmailAndPassword(email, pass).then(cred => {
+    return db.ref('usuarios/' + cred.user.uid).set({ email: email, rol: rol });
+  }).then(() => {
+    msg.innerHTML = '<span class="ok">✓ Usuario ' + email + ' creado con rol ' + rol + '.</span>';
+    cargarUsuarios();
+    document.getElementById('email').value = '';
+    document.getElementById('pass').value = '';
+  }).catch(err => {
+    msg.innerHTML = '<span class="err">Error: ' + err.message + '</span>';
+  });
+}
+
+function cargarUsuarios(){
+  db.ref('usuarios').get().then(snap => {
+    const el = document.getElementById('lista-usuarios');
+    const data = snap.val() || {};
+    const users = Object.values(data);
+    if(users.length === 0){
+      el.innerHTML = '<div style="font-size:12px;color:#5F5E5A;">No hay usuarios aun.</div>';
+      return;
+    }
+    let html = '<table><tr><th>Correo</th><th>Rol</th></tr>';
+    users.forEach(u => { html += '<tr><td>'+u.email+'</td><td>'+u.rol+'</td></tr>'; });
+    html += '</table>';
+    el.innerHTML = html;
+  });
+}
+
+cargarUsuarios();
+</script>
+</body>
+</html>

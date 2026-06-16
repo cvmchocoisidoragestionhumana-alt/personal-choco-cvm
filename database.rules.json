@@ -1,0 +1,19 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    "usuarios": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": true
+      }
+    },
+    "personal": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() == 'CHOCO'"
+    },
+    "movimientos": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('usuarios').child(auth.uid).child('rol').val() == 'CHOCO'"
+    }
+  }
+}
