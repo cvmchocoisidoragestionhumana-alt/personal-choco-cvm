@@ -92,7 +92,7 @@ tr:hover td{background:#fafafa;}
 .loginbox input{width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px;}
 .loginbox button{width:100%;margin-top:18px;padding:10px;background:var(--azul);color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;}
 .loginerr{color:var(--rojo);font-size:12px;margin-top:10px;min-height:16px;}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:200;}
 .modal{background:#fff;border-radius:12px;padding:24px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;}
 .modal h3{font-size:15px;font-weight:bold;margin-bottom:16px;color:var(--texto);}
 .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
@@ -154,7 +154,7 @@ tr:hover td{background:#fafafa;}
 </div>
 
 <!-- MODAL MOVIMIENTO -->
-<div id="modal-mov" class="modal-overlay hidden">
+<div id="modal-mov" class="modal-overlay">
   <div class="modal">
     <h3 id="modal-mov-title">Registrar movimiento</h3>
     <div class="form-group" style="margin-bottom:10px;">
@@ -198,8 +198,8 @@ tr:hover td{background:#fafafa;}
 <script>
 // ── ESTADO GLOBAL ──────────────────────────────────────────
 let ROLE = null;
-let PERSONAL = {};       // cedula -> datos trabajador
-let MOV_TRABAJADOR = null; // cedula del trabajador para modal
+let PERSONAL = {};
+let MOV_TRABAJADOR = null;
 const today = new Date().toISOString().slice(0,10);
 const mesActual = today.slice(0,7);
 
@@ -263,9 +263,7 @@ function actualizarKPIs(){
     if(est === 'Suspendido') suspendidos++;
     if(est === 'Egresado') egresos++;
     if(est === 'Contrato culminado') contratos++;
-    // ingresos del mes
     if(w.fechaIngreso && w.fechaIngreso.startsWith(mes)) ingresos++;
-    // egresos del mes (por movimientos)
     if(w.ultimoMovFecha && w.ultimoMovFecha.startsWith(mes) && (est==='Egresado'||est==='Contrato culminado')) egresos++;
   });
 
@@ -292,6 +290,7 @@ function renderTab(){
   if(TAB==='directorio') renderDirectorio();
   if(TAB==='ingreso') renderIngreso();
   if(TAB==='movimientos') renderMovimientos();
+  if(TAB==='ficha') renderFicha();
 }
 
 // ── 1. DIRECTORIO ──────────────────────────────────────────
@@ -308,8 +307,6 @@ function renderDirectorio(){
     if(filtroNomina && w.tipoNomina !== filtroNomina) return false;
     return true;
   });
-
-  const cargos = [...new Set(workers.map(w=>w.cargo).filter(Boolean))].sort();
 
   let html = `<div class="card">
     <div class="searchbar">
@@ -479,8 +476,8 @@ function guardarIngreso(){
     estadoCivil: document.getElementById('f-estado-civil').value,
     tipoSangre: document.getElementById('f-sangre').value,
     profesion: document.getElementById('f-profesion').value,
-    estado: document.getElementById('f-estado').value,
-    municipio: document.getElementById('f-municipio').value,
+    estado_geo: document.getElementById('f-estado').value,
+    municipio_geo: document.getElementById('f-municipio').value,
     direccion: document.getElementById('f-direccion').value,
     telefono: document.getElementById('f-telefono').value,
     correo: document.getElementById('f-correo').value,
@@ -499,20 +496,12 @@ function guardarIngreso(){
     tallaBraga: document.getElementById('f-braga').value,
     tallaZapato: document.getElementById('f-zapato').value,
     zurdo: document.getElementById('f-zurdo').value,
-    estado_laboral: 'Activo',
+    estado: 'Activo',
     foto: fotoBase64 || '',
     fechaRegistro: today,
     registradoPor: auth.currentUser ? auth.currentUser.email : ''
   };
 
-  // Renombrar campo para evitar confusión con estado geográfico
-  datos.estado_geo = datos.estado;
-  datos.municipio_geo = datos.municipio;
-  delete datos.estado;
-  delete datos.municipio;
-  datos.estado = 'Activo'; // estado laboral
-
-  // Registrar el movimiento de ingreso
   const movKey = db.ref('movimientos').push().key;
   const movData = {
     cedula: ced,
@@ -714,11 +703,11 @@ function abrirModal(cedula, tipoPreselect){
   document.getElementById('mov-fecha').value = today;
   document.getElementById('mov-detalle').value = '';
   document.getElementById('mov-nuevo-cargo').value = '';
-  document.getElementById('modal-mov').classList.remove('hidden');
+  document.getElementById('modal-mov').style.display = 'flex';
 }
 
 function cerrarModal(){
-  document.getElementById('modal-mov').classList.add('hidden');
+  document.getElementById('modal-mov').style.display = 'none';
   MOV_TRABAJADOR = null;
 }
 
@@ -743,7 +732,6 @@ function guardarMovimiento(){
     timestamp: Date.now()
   };
 
-  // Actualizar estado del trabajador según tipo de movimiento
   const updates = {};
   updates['movimientos/' + movKey] = movData;
   updates['personal/' + MOV_TRABAJADOR + '/ultimoMovFecha'] = fecha;
@@ -763,7 +751,6 @@ function guardarMovimiento(){
 
 // ── EDITAR TRABAJADOR ──────────────────────────────────────
 function editarTrabajador(cedula){
-  // Por ahora va a ingreso con datos pre-cargados - implementar en próxima versión
   alert('Función de edición próximamente disponible.');
 }
 
@@ -788,14 +775,6 @@ function formatFecha(f){
     const [y,m,d] = f.split('-');
     return d+'/'+m+'/'+y;
   } catch(e){ return f; }
-}
-
-function renderTab(){ 
-  if(!ROLE) return;
-  if(TAB==='directorio') renderDirectorio();
-  if(TAB==='ingreso') renderIngreso();
-  if(TAB==='movimientos') renderMovimientos();
-  if(TAB==='ficha') renderFicha();
 }
 </script>
 </body>
