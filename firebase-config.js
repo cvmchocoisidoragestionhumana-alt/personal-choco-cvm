@@ -2,7 +2,7 @@
 // CONFIGURACION DE FIREBASE  -  personal-choco-cvm
 // =========================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCsi_mV-I8liJHdqcPVDXBMXjzOpXmFT3s",
+  apiKey: "AIzaSyCsi_mV-I8liJHdqcPVDXBMXjzOpXmfT3s",
   authDomain: "personal-choco-cvm.firebaseapp.com",
   databaseURL: "https://personal-choco-cvm-default-rtdb.firebaseio.com",
   projectId: "personal-choco-cvm",
