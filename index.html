@@ -559,7 +559,7 @@ function renderFicha(){
   const avatarExtra = ROLE==='CHOCO' ? 'title="Clic para cambiar foto" style="cursor:pointer;'+fotoStyle+'" onclick="document.getElementById(\'foto-input-ficha\').click()"' : 'style="'+fotoStyle+'"';
   let acc='';
   if(ROLE==='CHOCO'){
-    acc='<button class="btn btn-outline" onclick="editarTrabajador(\''+fichaActual+'\')" style="font-size:12px;">✏️ Editar</button><button class="btn btn-ambar bm" data-t="Suspension">Suspender</button><button class="btn btn-rojo bm" data-t="Egreso">Egreso</button><button class="btn btn-outline bm" data-t="">Otro movimiento</button>';
+    acc='<button class="btn btn-outline" id="btn-editar-ficha" style="font-size:12px;">✏️ Editar</button><button class="btn btn-ambar bm" data-t="Suspension">Suspender</button><button class="btn btn-rojo bm" data-t="Egreso">Egreso</button><button class="btn btn-outline bm" data-t="">Otro movimiento</button>';
     if(est==='Suspendido'||est==='Egresado') acc+='<button class="btn btn-verde bm" data-t="Reincorporacion">Reincorporar</button>';
   }
   let html='<div class="card"><button onclick="tab(\'directorio\')" style="margin-bottom:12px;background:none;border:none;color:var(--azul);font-size:13px;cursor:pointer;padding:0;font-weight:bold;">← Volver al directorio</button>'+(ROLE==='CHOCO'?'<input type="file" id="foto-input-ficha" accept="image/*" style="display:none;">':'')+'<div class="ficha-header"><div class="avatar" '+avatarExtra+'>'+fotoContent+'</div><div class="ficha-info"><h3>'+(w.apellidos||'')+', '+(w.nombres||'')+'</h3><p>C.I: '+w.cedula+' · '+(w.cargo||'')+' · <span class="pill '+pc+'">'+est+'</span></p><p class="muted">'+(w.gerencia||'')+' '+(w.tipoNomina?'· '+w.tipoNomina:'')+'</p><p><span class="pill" style="'+(getSede(w)==='Mina Isidora'?'background:#E2EFDA;color:#375623;':'background:#DDEBF7;color:#185FA5;')+'">'+getSede(w)+'</span></p></div><div class="ficha-acciones">'+acc+'</div></div>';
@@ -587,6 +587,8 @@ html+='<div class="ficha-grid"><div><div class="block-title">Datos personales</d
   html+='</div></div><div style="margin-top:16px;"><div class="block-title">Historial de movimientos</div><div id="hist-mov"><div class="muted">Cargando...</div></div></div></div>';
   document.getElementById('view-ficha').innerHTML=html;
   document.querySelectorAll('.bm').forEach(function(b){b.addEventListener('click',function(){abrirModal(fichaActual,this.dataset.t);});});
+  const btnEdit = document.getElementById('btn-editar-ficha');
+  if(btnEdit) btnEdit.addEventListener('click', function(){ editarTrabajador(fichaActual); });
   cargarHist(fichaActual);
 // Photo upload handler
 if(ROLE==='CHOCO'){
@@ -647,7 +649,15 @@ if(est==='Suspendido'){
 }
 }
 
-function fr(l,v){if(!v)return'';return'<div class="ficha-row"><span class="label">'+l+'</span><span class="value">'+v+'</span></div>';}
+function fr(l,v){
+  if(!v && v!==0) return '';
+  // Format large numbers (cuenta bancaria) as plain string
+  let display = v;
+  if(typeof v === 'number'){
+    display = Number.isInteger(v) ? v.toString() : v.toLocaleString('es-VE');
+  }
+  return '<div class="ficha-row"><span class="label">'+l+'</span><span class="value">'+display+'</span></div>';
+}
 
 function cargarHist(ced){
   db.ref('movimientos').orderByChild('cedula').equalTo(ced).get().then(function(snap){
