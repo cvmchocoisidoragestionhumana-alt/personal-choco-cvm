@@ -13,7 +13,7 @@ if(!firebase.apps.length){
     databaseURL: "https://personal-choco-cvm-default-rtdb.firebaseio.com"
   });
 }
-var db;
+window.db = firebase.database();
 </script>
 <style>
 :root{--azul:#185FA5;--azulbg:#E6F1FB;--verde:#27500A;--verdebg:#EAF3DE;--rojo:#A32D2D;--rojobg:#FCEBEB;--ambar:#854F0B;--ambarbg:#FAEEDA;--gris:#5F5E5A;--grisbg:#F1EFE8;--borde:#D3D1C7;--texto:#2C2C2A;}
@@ -207,7 +207,6 @@ let MOV_TRABAJADOR = null;
 let fichaActual = null;
 let fotoBase64 = '';
 let TAB = 'directorio';
-db = firebase.database();
 let filtroEstado = '', filtroNomina = '', busqueda = '';
 const today = new Date().toISOString().slice(0,10);
 
