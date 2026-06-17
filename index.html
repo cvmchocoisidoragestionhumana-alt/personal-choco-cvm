@@ -709,6 +709,98 @@ document.getElementById('btn-guardar-mov').addEventListener('click',function(){
   db.ref().update(upd).then(function(){document.getElementById('modal-mov').style.display='none';MOV_TRABAJADOR=null;renderFicha();}).catch(function(e){alert('Error: '+e.message);});
 });
 
+
+function editarTrabajador(cedula){
+  const w = PERSONAL[cedula];
+  if(!w) return;
+  const v = document.getElementById('view-ficha');
+
+  function campo(label, id, val){
+    return '<div class="form-group"><label>'+label+'</label><input type="text" id="'+id+'" value="'+(val||'')+'" style="width:100%;padding:7px 9px;border:1px solid var(--borde);border-radius:6px;font-size:13px;"></div>';
+  }
+  function select(label, id, val, opts){
+    let s = '<div class="form-group"><label>'+label+'</label><select id="'+id+'" style="width:100%;padding:7px 9px;border:1px solid var(--borde);border-radius:6px;font-size:13px;">';
+    opts.forEach(function(o){ s += '<option'+(val===o?' selected':'')+'>'+o+'</option>'; });
+    return s + '</select></div>';
+  }
+
+  let html = '<div class="card">';
+  html += '<button id="btn-cancelar-editar" style="margin-bottom:12px;background:none;border:none;color:var(--azul);font-size:13px;cursor:pointer;padding:0;font-weight:bold;">← Cancelar edición</button>';
+  html += '<h2 style="margin-bottom:14px;">Editando: '+(w.apellidos||'')+', '+(w.nombres||'')+'</h2>';
+
+  html += '<div class="form-section">Datos personales</div><div class="form-grid">';
+  html += campo('Nombres', 'e-nombres', w.nombres);
+  html += campo('Apellidos', 'e-apellidos', w.apellidos);
+  html += select('Sexo', 'e-sexo', w.sexo, ['Masculino','Femenino']);
+  html += campo('Profesión', 'e-profesion', w.profesion);
+  html += campo('Teléfono', 'e-telefono', w.telefono);
+  html += campo('Correo', 'e-correo', w.correo);
+  html += campo('Cuenta bancaria', 'e-cuenta', w.cuentaBancaria);
+  html += campo('Dirección', 'e-direccion', w.direccion);
+  html += campo('Estado (residencia)', 'e-estado-geo', w.estado_geo);
+  html += campo('Municipio', 'e-municipio-geo', w.municipio_geo);
+  html += select('Estado civil', 'e-estado-civil', w.estadoCivil, ['','Soltero/a','Casado/a','Divorciado/a','Viudo/a','Unión estable']);
+  html += select('Tipo de sangre', 'e-tipo-sangre', w.tipoSangre, ['','A+','A-','B+','B-','AB+','AB-','O+','O-']);
+  html += '</div>';
+
+  html += '<div class="form-section">Datos laborales</div><div class="form-grid">';
+  html += campo('Cargo', 'e-cargo', w.cargo);
+  html += campo('Gerencia', 'e-gerencia', w.gerencia);
+  html += campo('Ubicación física', 'e-ubicacion', w.ubicacion);
+  html += campo('F. Ingreso (YYYY-MM-DD)', 'e-fingreso', w.fechaIngreso);
+  html += select('Tipo nómina', 'e-tipo-nomina', w.tipoNomina, ['','Operativos','Contratados','Empleados','Direccion Y Confianza']);
+  html += select('Tipo contrato', 'e-tipo-contrato', w.tipoContrato, ['','Fijo','Contratado','Obra determinada']);
+  html += '</div>';
+
+  html += '<div class="form-section">Tallas</div><div class="form-grid-3">';
+  html += select('Camisa', 'e-camisa', w.tallaCamisa, ['','XS','S','M','L','XL','XXL','XXXL']);
+  html += campo('Pantalón', 'e-pantalon', w.tallaPantalon);
+  html += select('Braga', 'e-braga', w.tallaBraga, ['','XS','S','M','L','XL','XXL','XXXL']);
+  html += campo('Zapato', 'e-zapato', w.tallaZapato);
+  html += select('Zurdo', 'e-zurdo', w.zurdo, ['No','Si']);
+  html += '</div>';
+
+  html += '<div class="form-section">Centro de votación</div><div class="form-grid-3">';
+  html += campo('Nombre del centro', 'e-cv-nombre', w.cvNombre);
+  html += campo('Estado CV', 'e-cv-estado', w.cvEstado);
+  html += campo('Municipio CV', 'e-cv-municipio', w.cvMunicipio);
+  html += '</div>';
+
+  html += '<div class="form-actions"><button class="btn btn-prim" id="btn-guardar-editar">Guardar cambios</button><button class="btn btn-outline" id="btn-cancelar-editar2">Cancelar</button></div>';
+  html += '<div id="edit-msg" style="margin-top:10px;font-size:12px;"></div>';
+  html += '</div>';
+
+  v.innerHTML = html;
+
+  document.getElementById('btn-cancelar-editar').addEventListener('click', function(){ fichaActual=cedula; renderFicha(); });
+  document.getElementById('btn-cancelar-editar2').addEventListener('click', function(){ fichaActual=cedula; renderFicha(); });
+
+  document.getElementById('btn-guardar-editar').addEventListener('click', function(){
+    const g = function(id){ const el=document.getElementById(id); return el ? el.value.trim() : ''; };
+    const updates = {
+      nombres: g('e-nombres'), apellidos: g('e-apellidos'),
+      sexo: g('e-sexo'), profesion: g('e-profesion'),
+      telefono: g('e-telefono'), correo: g('e-correo'),
+      cuentaBancaria: g('e-cuenta'), direccion: g('e-direccion'),
+      estado_geo: g('e-estado-geo'), municipio_geo: g('e-municipio-geo'),
+      estadoCivil: g('e-estado-civil'), tipoSangre: g('e-tipo-sangre'),
+      cargo: g('e-cargo'), gerencia: g('e-gerencia'),
+      ubicacion: g('e-ubicacion'), fechaIngreso: g('e-fingreso'),
+      tipoNomina: g('e-tipo-nomina'), tipoContrato: g('e-tipo-contrato'),
+      tallaCamisa: g('e-camisa'), tallaPantalon: g('e-pantalon'),
+      tallaBraga: g('e-braga'), tallaZapato: g('e-zapato'),
+      zurdo: g('e-zurdo'), cvNombre: g('e-cv-nombre'),
+      cvEstado: g('e-cv-estado'), cvMunicipio: g('e-cv-municipio')
+    };
+    const msg = document.getElementById('edit-msg');
+    msg.textContent = 'Guardando...';
+    db.ref('personal/'+cedula).update(updates).then(function(){
+      msg.innerHTML = '<span style="color:var(--verde)">✓ Cambios guardados correctamente.</span>';
+      setTimeout(function(){ fichaActual=cedula; renderFicha(); }, 1200);
+    }).catch(function(e){ msg.innerHTML='<span class="danger">Error: '+e.message+'</span>'; });
+  });
+}
+
 // ── EXPORTAR ──────────────────────────────────────────────
 function exportarExcel(){
   if(typeof XLSX==='undefined'){alert('Librería no disponible.');return;}
