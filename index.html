@@ -301,9 +301,12 @@ function renderTab(){
 // ── DIRECTORIO ────────────────────────────────────────────
 
 function getSede(w){
-  const u = (w.ubicacion||w.gerencia||'').toUpperCase();
-  if(u.includes('ISIDORA') || u.includes('MINA ISIDORA')) return 'Mina Isidora';
-  if(u.includes('CHOCO') || u.includes('CHOCÓ')) return 'Planta Chocó';
+  const u = (w.ubicacion||'').toUpperCase().trim();
+  if(u==='MINA ISIDORA') return 'Mina Isidora';
+  if(u==='PLANTA CHOCO') return 'Planta Chocó';
+  // Fallback: check unidad
+  const g = (w.gerencia||'').toUpperCase();
+  if(g.includes('ISIDORA')) return 'Mina Isidora';
   return 'Planta Chocó';
 }
 function renderDirectorio(){
