@@ -305,14 +305,14 @@ function renderDirectorio(){
     const b = busqueda.toLowerCase();
     if(b && !(w.cedula||'').includes(b) && !(w.nombres||'').toLowerCase().includes(b) && !(w.apellidos||'').toLowerCase().includes(b)) return false;
     if(filtroEstado && (w.estado||'Activo')!==filtroEstado) return false;
-    if(filtroNomina && w.tipoNomina!==filtroNomina) return false;
+    if(filtroNomina && (w.tipoNomina||'').toLowerCase()!==filtroNomina.toLowerCase()) return false;
     return true;
   });
 
   let html = '<div class="card"><div class="searchbar">';
   html += '<input type="text" id="s-bus" placeholder="Buscar cédula, nombre o apellido..." value="'+busqueda+'">';
   html += '<select id="s-est"><option value="">Todos los estados</option><option'+(filtroEstado==='Activo'?' selected':'')+' value="Activo">Activo</option><option'+(filtroEstado==='Egresado'?' selected':'')+' value="Egresado">Egresado</option><option'+(filtroEstado==='Suspendido'?' selected':'')+' value="Suspendido">Suspendido</option><option'+(filtroEstado==='Contrato culminado'?' selected':'')+' value="Contrato culminado">Contrato culminado</option></select>';
-  html += '<select id="s-nom"><option value="">Todos los tipos</option><option'+(filtroNomina==='Operativos'?' selected':'')+' value="Operativos">Operativos</option><option'+(filtroNomina==='Contratados'?' selected':'')+' value="Contratados">Contratados</option><option'+(filtroNomina==='Empleados'?' selected':'')+' value="Empleados">Empleados</option><option'+(filtroNomina==='Direccion y Confianza'?' selected':'')+' value="Direccion y Confianza">Dirección y Confianza</option></select>';
+  html += '<select id="s-nom"><option value="">Todos los tipos</option><option'+(filtroNomina==='Operativos'?' selected':'')+' value="Operativos">Operativos</option><option'+(filtroNomina==='Contratados'?' selected':'')+' value="Contratados">Contratados</option><option'+(filtroNomina==='Empleados'?' selected':'')+' value="Empleados">Empleados</option><option'+(filtroNomina==='Direccion y Confianza'?' selected':'')+' value="Direccion Y Confianza">Dirección y Confianza</option></select>';
   html += '<button class="btn btn-prim" id="btn-exp">Exportar Excel</button></div>';
   html += '<div class="muted" style="margin-bottom:8px;">'+lista.length+' trabajador(es)</div>';
   html += '<div class="tablewrap"><table><thead><tr><th>Cédula</th><th>Nombre y apellido</th><th>Cargo</th><th>Gerencia</th><th>Tipo nómina</th><th>F. Ingreso</th><th>Estado</th><th></th></tr></thead><tbody>';
@@ -369,7 +369,7 @@ function renderIngreso(){
       <div class="form-group"><label>Gerencia *</label><input type="text" id="f-gerencia"></div>
       <div class="form-group"><label>Ubicación física</label><input type="text" id="f-ubic"></div>
       <div class="form-group"><label>F. Ingreso *</label><input type="date" id="f-fing"></div>
-      <div class="form-group"><label>Tipo nómina</label><select id="f-nomina"><option value="">Seleccionar</option><option>Operativos</option><option>Contratados</option><option>Empleados</option><option>Direccion y Confianza</option></select></div>
+      <div class="form-group"><label>Tipo nómina</label><select id="f-nomina"><option value="">Seleccionar</option><option>Operativos</option><option>Contratados</option><option>Empleados</option><option value="Direccion Y Confianza">Dirección y Confianza</option></select></div>
       <div class="form-group"><label>Tipo contrato</label><select id="f-contrato"><option value="">Seleccionar</option><option>Fijo</option><option>Contratado</option><option>Obra determinada</option></select></div>
     </div>
     <div class="form-section">Tallas</div>
@@ -438,13 +438,23 @@ function renderFicha(){
   const est=w.estado||'Activo';
   const pc=est==='Activo'?'p-activo':est==='Egresado'?'p-egreso':est==='Suspendido'?'p-suspendido':'p-contrato';
   const inic=((w.nombres||'').charAt(0)+(w.apellidos||'').charAt(0)).toUpperCase();
+  const fotoStyle = w.foto ? 'background-image:url('+w.foto+');background-size:cover;background-position:center;' : '';
+  const fotoContent = w.foto ? '' : inic;
+  const avatarExtra = ROLE==='CHOCO' ? 'title="Clic para cambiar foto" style="cursor:pointer;'+fotoStyle+'" onclick="document.getElementById(\'foto-input-ficha\').click()"' : 'style="'+fotoStyle+'"';
   let acc='';
   if(ROLE==='CHOCO'){
     acc='<button class="btn btn-ambar bm" data-t="Suspension">Suspender</button><button class="btn btn-rojo bm" data-t="Egreso">Egreso</button><button class="btn btn-outline bm" data-t="">Otro movimiento</button>';
     if(est==='Suspendido'||est==='Egresado') acc+='<button class="btn btn-verde bm" data-t="Reincorporacion">Reincorporar</button>';
   }
-  let html='<div class="card"><div class="ficha-header"><div class="avatar">'+inic+'</div><div class="ficha-info"><h3>'+(w.apellidos||'')+', '+(w.nombres||'')+'</h3><p>C.I: '+w.cedula+' · '+(w.cargo||'')+' · <span class="pill '+pc+'">'+est+'</span></p><p class="muted">'+(w.gerencia||'')+' '+(w.tipoNomina?'· '+w.tipoNomina:'')+'</p></div><div class="ficha-acciones">'+acc+'</div></div>';
-  html+='<div class="ficha-grid"><div><div class="block-title">Datos personales</div>';
+  let html='<div class="card"><button onclick="tab(\'directorio\')" style="margin-bottom:12px;background:none;border:none;color:var(--azul);font-size:13px;cursor:pointer;padding:0;font-weight:bold;">← Volver al directorio</button>'+(ROLE==='CHOCO'?'<input type="file" id="foto-input-ficha" accept="image/*" style="display:none;">':'')+'<div class="ficha-header"><div class="avatar" '+avatarExtra+'>'+fotoContent+'</div><div class="ficha-info"><h3>'+(w.apellidos||'')+', '+(w.nombres||'')+'</h3><p>C.I: '+w.cedula+' · '+(w.cargo||'')+' · <span class="pill '+pc+'">'+est+'</span></p><p class="muted">'+(w.gerencia||'')+' '+(w.tipoNomina?'· '+w.tipoNomina:'')+'</p></div><div class="ficha-acciones">'+acc+'</div></div>';
+  // Add suspension alert if suspended
+if(est==='Suspendido'){
+  html+='<div style="background:var(--ambarbg);border:1px solid var(--ambar);border-radius:8px;padding:12px;margin-bottom:14px;">';
+  html+='<div style="font-weight:bold;color:var(--ambar);margin-bottom:6px;">⚠ Trabajador suspendido</div>';
+  html+='<div id="info-suspension" style="font-size:12px;color:var(--ambar);">Cargando información...</div>';
+  html+='</div>';
+}
+html+='<div class="ficha-grid"><div><div class="block-title">Datos personales</div>';
   [['Sexo',w.sexo],['Nacionalidad',w.nacionalidad],['F. Nacimiento',ff(w.fechaNacimiento)],['Lugar nacimiento',w.lugarNacimiento],['Estado civil',w.estadoCivil],['Tipo de sangre',w.tipoSangre],['Profesión',w.profesion],['Estado (res.)',w.estado_geo],['Municipio',w.municipio_geo],['Dirección',w.direccion],['Teléfono',w.telefono],['Correo',w.correo],['Cuenta bancaria',w.cuentaBancaria]].forEach(function(r){html+=fr(r[0],r[1]);});
   html+='</div><div><div class="block-title">Datos laborales</div>';
   [['Cargo',w.cargo],['Gerencia',w.gerencia],['Ubicación',w.ubicacion],['F. Ingreso',ff(w.fechaIngreso)],['Tipo nómina',w.tipoNomina],['Tipo contrato',w.tipoContrato]].forEach(function(r){html+=fr(r[0],r[1]);});
@@ -456,6 +466,48 @@ function renderFicha(){
   document.getElementById('view-ficha').innerHTML=html;
   document.querySelectorAll('.bm').forEach(function(b){b.addEventListener('click',function(){abrirModal(fichaActual,this.dataset.t);});});
   cargarHist(fichaActual);
+// Photo upload handler
+if(ROLE==='CHOCO'){
+  const fotoInput = document.getElementById('foto-input-ficha');
+  if(fotoInput){
+    fotoInput.addEventListener('change', function(){
+      if(!this.files||!this.files[0]) return;
+      const file = this.files[0];
+      if(file.size > 2*1024*1024){ alert('La foto no debe superar 2MB.'); return; }
+      const reader = new FileReader();
+      reader.onload = function(e){
+        const base64 = e.target.result;
+        db.ref('personal/'+fichaActual+'/foto').set(base64).then(function(){
+          // Update avatar visually
+          const av = document.querySelector('.ficha-header .avatar');
+          if(av){
+            av.style.backgroundImage = 'url('+base64+')';
+            av.style.backgroundSize = 'cover';
+            av.style.backgroundPosition = 'center';
+            av.textContent = '';
+          }
+        }).catch(function(e){ alert('Error subiendo foto: '+e.message); });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+}
+if(est==='Suspendido'){
+  db.ref('movimientos').orderByChild('cedula').equalTo(fichaActual).get().then(function(snap){
+    const el=document.getElementById('info-suspension');
+    if(!el)return;
+    const movs=[];
+    snap.forEach(function(ch){movs.push(ch.val());});
+    // Find last suspension movement
+    const susp=movs.filter(function(m){return m.tipo==='Suspension';}).sort(function(a,b){return(b.timestamp||0)-(a.timestamp||0);});
+    if(susp.length){
+      const s=susp[0];
+      el.innerHTML='<b>Fecha de suspensión:</b> '+ff(s.fecha)+(s.detalle?'<br><b>Motivo:</b> '+s.detalle:'')+(s.registradoPor?'<br><b>Registrado por:</b> '+s.registradoPor:'');
+    } else {
+      el.innerHTML='Sin detalle de suspensión registrado.';
+    }
+  });
+}
 }
 
 function fr(l,v){if(!v)return'';return'<div class="ficha-row"><span class="label">'+l+'</span><span class="value">'+v+'</span></div>';}
