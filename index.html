@@ -207,7 +207,7 @@ let MOV_TRABAJADOR = null;
 let fichaActual = null;
 let fotoBase64 = '';
 let TAB = 'directorio';
-let filtroEstado = '', filtroNomina = '', busqueda = '';
+let filtroEstado = '', filtroNomina = '', filtroSede = '', busqueda = '';
 const today = new Date().toISOString().slice(0,10);
 
 // ── LOGIN ─────────────────────────────────────────────────
@@ -299,6 +299,13 @@ function renderTab(){
 }
 
 // ── DIRECTORIO ────────────────────────────────────────────
+
+function getSede(w){
+  const u = (w.ubicacion||w.gerencia||'').toUpperCase();
+  if(u.includes('ISIDORA') || u.includes('MINA ISIDORA')) return 'Mina Isidora';
+  if(u.includes('CHOCO') || u.includes('CHOCÓ')) return 'Planta Chocó';
+  return 'Planta Chocó';
+}
 function renderDirectorio(){
   const v = document.getElementById('view-directorio');
   let lista = Object.values(PERSONAL).filter(function(w){
@@ -306,26 +313,36 @@ function renderDirectorio(){
     if(b && !(w.cedula||'').includes(b) && !(w.nombres||'').toLowerCase().includes(b) && !(w.apellidos||'').toLowerCase().includes(b)) return false;
     if(filtroEstado && (w.estado||'Activo')!==filtroEstado) return false;
     if(filtroNomina && (w.tipoNomina||'').toLowerCase()!==filtroNomina.toLowerCase()) return false;
+    if(filtroSede && getSede(w)!==filtroSede) return false;
     return true;
   });
 
   let html = '<div class="card"><div class="searchbar">';
   html += '<input type="text" id="s-bus" placeholder="Buscar cédula, nombre o apellido..." value="'+busqueda+'">';
   html += '<select id="s-est"><option value="">Todos los estados</option><option'+(filtroEstado==='Activo'?' selected':'')+' value="Activo">Activo</option><option'+(filtroEstado==='Egresado'?' selected':'')+' value="Egresado">Egresado</option><option'+(filtroEstado==='Suspendido'?' selected':'')+' value="Suspendido">Suspendido</option><option'+(filtroEstado==='Contrato culminado'?' selected':'')+' value="Contrato culminado">Contrato culminado</option></select>';
-  html += '<select id="s-nom"><option value="">Todos los tipos</option><option'+(filtroNomina==='Operativos'?' selected':'')+' value="Operativos">Operativos</option><option'+(filtroNomina==='Contratados'?' selected':'')+' value="Contratados">Contratados</option><option'+(filtroNomina==='Empleados'?' selected':'')+' value="Empleados">Empleados</option><option'+(filtroNomina==='Direccion y Confianza'?' selected':'')+' value="Direccion Y Confianza">Dirección y Confianza</option></select>';
+  html += '<select id="s-sede"><option value="">Todas las sedes</option><option'+(filtroSede==="Planta Chocó"?' selected':'')+' value="Planta Chocó">Planta Chocó</option><option'+(filtroSede==="Mina Isidora"?' selected':'')+' value="Mina Isidora">Mina Isidora</option></select>'+'<select id="s-nom"><option value="">Todos los tipos</option><option'+(filtroNomina==='Operativos'?' selected':'')+' value="Operativos">Operativos</option><option'+(filtroNomina==='Contratados'?' selected':'')+' value="Contratados">Contratados</option><option'+(filtroNomina==='Empleados'?' selected':'')+' value="Empleados">Empleados</option><option'+(filtroNomina==='Direccion y Confianza'?' selected':'')+' value="Direccion Y Confianza">Dirección y Confianza</option></select>';
   html += '<button class="btn btn-prim" id="btn-exp">Exportar Excel</button></div>';
   html += '<div class="muted" style="margin-bottom:8px;">'+lista.length+' trabajador(es)</div>';
-  html += '<div class="tablewrap"><table><thead><tr><th>Cédula</th><th>Nombre y apellido</th><th>Cargo</th><th>Gerencia</th><th>Tipo nómina</th><th>F. Ingreso</th><th>Estado</th><th></th></tr></thead><tbody>';
+  html += '<div class="tablewrap"><table><thead><tr><th>Cédula</th><th>Nombre y apellido</th><th>Cargo</th><th>Gerencia</th><th>Sede</th><th>Tipo nómina</th><th>F. Ingreso</th><th>Estado</th><th></th></tr></thead><tbody>';
   lista.slice(0,500).forEach(function(w){
     const est=w.estado||'Activo';
     const pc=est==='Activo'?'p-activo':est==='Egresado'?'p-egreso':est==='Suspendido'?'p-suspendido':'p-contrato';
-    html+='<tr><td>'+w.cedula+'</td><td><strong>'+(w.apellidos||'')+', '+(w.nombres||'')+'</strong></td><td>'+(w.cargo||'')+'</td><td>'+(w.gerencia||'')+'</td><td>'+(w.tipoNomina||'')+'</td><td>'+ff(w.fechaIngreso)+'</td><td><span class="pill '+pc+'">'+est+'</span></td><td><button class="btn btn-outline bf" data-c="'+w.cedula+'" style="padding:3px 8px;font-size:11px;">Ver ficha</button></td></tr>';
+    const sede=getSede(w);const sedePill=sede==='Mina Isidora'?'background:#E2EFDA;color:#375623;':'background:#DDEBF7;color:#185FA5;';html+='<tr><td>'+w.cedula+'</td><td><strong>'+(w.apellidos||'')+', '+(w.nombres||'')+'</strong></td><td>'+(w.cargo||'')+'</td><td>'+(w.gerencia||'')+'</td><td><span class="pill" style="'+sedePill+'">'+sede+'</span></td><td>'+(w.tipoNomina||'')+'</td><td>'+ff(w.fechaIngreso)+'</td><td><span class="pill '+pc+'">'+est+'</span></td><td><button class="btn btn-outline bf" data-c="'+w.cedula+'" style="padding:3px 8px;font-size:11px;">Ver ficha</button></td></tr>';
   });
   html += '</tbody></table></div></div>';
   v.innerHTML = html;
-  document.getElementById('s-bus').addEventListener('input',function(){busqueda=this.value;renderDirectorio();});
+  document.getElementById('s-bus').addEventListener('input',function(){
+  busqueda=this.value;
+  renderDirectorio();
+  // Si la cédula escrita coincide exactamente con un trabajador, abrir su ficha
+  const cedLimpia = this.value.trim().replace(/[^0-9]/g,'');
+  if(cedLimpia && PERSONAL[cedLimpia]){
+    verFicha(cedLimpia);
+  }
+});
   document.getElementById('s-est').addEventListener('change',function(){filtroEstado=this.value;renderDirectorio();});
   document.getElementById('s-nom').addEventListener('change',function(){filtroNomina=this.value;renderDirectorio();});
+  document.getElementById('s-sede').addEventListener('change',function(){filtroSede=this.value;renderDirectorio();});
   document.getElementById('btn-exp').addEventListener('click',exportarExcel);
   document.querySelectorAll('.bf').forEach(function(b){b.addEventListener('click',function(){verFicha(this.dataset.c);});});
 }
@@ -446,7 +463,7 @@ function renderFicha(){
     acc='<button class="btn btn-ambar bm" data-t="Suspension">Suspender</button><button class="btn btn-rojo bm" data-t="Egreso">Egreso</button><button class="btn btn-outline bm" data-t="">Otro movimiento</button>';
     if(est==='Suspendido'||est==='Egresado') acc+='<button class="btn btn-verde bm" data-t="Reincorporacion">Reincorporar</button>';
   }
-  let html='<div class="card"><button onclick="tab(\'directorio\')" style="margin-bottom:12px;background:none;border:none;color:var(--azul);font-size:13px;cursor:pointer;padding:0;font-weight:bold;">← Volver al directorio</button>'+(ROLE==='CHOCO'?'<input type="file" id="foto-input-ficha" accept="image/*" style="display:none;">':'')+'<div class="ficha-header"><div class="avatar" '+avatarExtra+'>'+fotoContent+'</div><div class="ficha-info"><h3>'+(w.apellidos||'')+', '+(w.nombres||'')+'</h3><p>C.I: '+w.cedula+' · '+(w.cargo||'')+' · <span class="pill '+pc+'">'+est+'</span></p><p class="muted">'+(w.gerencia||'')+' '+(w.tipoNomina?'· '+w.tipoNomina:'')+'</p></div><div class="ficha-acciones">'+acc+'</div></div>';
+  let html='<div class="card"><button onclick="tab(\'directorio\')" style="margin-bottom:12px;background:none;border:none;color:var(--azul);font-size:13px;cursor:pointer;padding:0;font-weight:bold;">← Volver al directorio</button>'+(ROLE==='CHOCO'?'<input type="file" id="foto-input-ficha" accept="image/*" style="display:none;">':'')+'<div class="ficha-header"><div class="avatar" '+avatarExtra+'>'+fotoContent+'</div><div class="ficha-info"><h3>'+(w.apellidos||'')+', '+(w.nombres||'')+'</h3><p>C.I: '+w.cedula+' · '+(w.cargo||'')+' · <span class="pill '+pc+'">'+est+'</span></p><p class="muted">'+(w.gerencia||'')+' '+(w.tipoNomina?'· '+w.tipoNomina:'')+'</p><p><span class="pill" style="'+(getSede(w)==='Mina Isidora'?'background:#E2EFDA;color:#375623;':'background:#DDEBF7;color:#185FA5;')+'">'+getSede(w)+'</span></p></div><div class="ficha-acciones">'+acc+'</div></div>';
   // Add suspension alert if suspended
 if(est==='Suspendido'){
   html+='<div style="background:var(--ambarbg);border:1px solid var(--ambar);border-radius:8px;padding:12px;margin-bottom:14px;">';
