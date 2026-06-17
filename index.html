@@ -775,7 +775,19 @@ function formatFecha(f){
     const [y,m,d] = f.split('-');
     return d+'/'+m+'/'+y;
   } catch(e){ return f; }
-}
+}// ── EXPONER FUNCIONES AL WINDOW ──
+window.doLogin = doLogin;
+window.doLogout = doLogout;
+window.tab = tab;
+window.verFicha = verFicha;
+window.abrirModal = abrirModal;
+window.cerrarModal = cerrarModal;
+window.guardarMovimiento = guardarMovimiento;
+window.guardarIngreso = guardarIngreso;
+window.limpiarFormIngreso = limpiarFormIngreso;
+window.editarTrabajador = editarTrabajador;
+window.exportarExcel = exportarExcel;
+window.previewFoto = previewFoto;
 </script>
 </body>
 </html>
