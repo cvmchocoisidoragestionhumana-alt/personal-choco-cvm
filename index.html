@@ -61,6 +61,7 @@ tr:hover td{background:#fafafa;}
 .p-suspendido{background:var(--ambarbg);color:var(--ambar);}
 .p-contrato{background:var(--grisbg);color:var(--gris);}
 .p-ingreso{background:var(--azulbg);color:var(--azul);}
+.p-vacaciones{background:#F3E8FF;color:#6B2FA0;}
 .form-section{font-size:11px;font-weight:bold;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--azulbg);}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
@@ -139,6 +140,7 @@ tr:hover td{background:#fafafa;}
       <div class="kpi k-egreso"><div class="l">Egresos este mes</div><div class="v" id="kpi-egreso">0</div></div>
       <div class="kpi k-suspendido"><div class="l">Suspendidos</div><div class="v" id="kpi-suspendido">0</div></div>
       <div class="kpi k-contrato"><div class="l">Contratos culminados</div><div class="v" id="kpi-contrato">0</div></div>
+    <div class="kpi" style="background:#F3E8FF;"><div class="l">De vacaciones</div><div class="v" id="kpi-vacaciones" style="color:#6B2FA0;">0</div></div>
     </div>
     <div class="tabs">
       <button class="active" data-tab="directorio">Directorio</button>
@@ -168,6 +170,7 @@ tr:hover td{background:#fafafa;}
         <option value="Cambio de grupo rotativo">Cambio de grupo rotativo</option>
         <option value="Transferencia de personal">Transferencia de personal</option>
         <option value="Reincorporacion">Reincorporación</option>
+        <option value="Vacaciones">Vacaciones</option>
       </select>
     </div>
     <div class="form-group" style="margin-bottom:10px;">
@@ -258,13 +261,14 @@ function setSync(t){ document.getElementById('sync-status').textContent = t; }
 // ── KPIs ──────────────────────────────────────────────────
 function actualizarKPIs(){
   const mes = new Date().toISOString().slice(0,7);
-  let activos=0,ingresos=0,egresos=0,suspendidos=0,contratos=0;
+  let activos=0,ingresos=0,egresos=0,suspendidos=0,contratos=0,vacaciones=0;
   Object.values(PERSONAL).forEach(function(w){
     const est = w.estado||'Activo';
     if(est==='Activo') activos++;
     if(est==='Suspendido') suspendidos++;
     if(est==='Egresado') egresos++;
     if(est==='Contrato culminado') contratos++;
+    if(est==='Vacaciones') vacaciones++;
     if(w.fechaIngreso&&w.fechaIngreso.startsWith(mes)) ingresos++;
   });
   document.getElementById('kpi-activo').textContent = activos;
@@ -272,6 +276,7 @@ function actualizarKPIs(){
   document.getElementById('kpi-egreso').textContent = egresos;
   document.getElementById('kpi-suspendido').textContent = suspendidos;
   document.getElementById('kpi-contrato').textContent = contratos;
+  const kvac=document.getElementById('kpi-vacaciones'); if(kvac) kvac.textContent=vacaciones;
 }
 
 // ── TABS ──────────────────────────────────────────────────
@@ -329,7 +334,7 @@ function renderDirectorio(){
   html += '<div class="tablewrap"><table><thead><tr><th>Cédula</th><th>Nombre y apellido</th><th>Cargo</th><th>Gerencia</th><th>Sede</th><th>Tipo nómina</th><th>F. Ingreso</th><th>Estado</th><th></th></tr></thead><tbody>';
   lista.slice(0,500).forEach(function(w){
     const est=w.estado||'Activo';
-    const pc=est==='Activo'?'p-activo':est==='Egresado'?'p-egreso':est==='Suspendido'?'p-suspendido':'p-contrato';
+    const pc=est==='Activo'?'p-activo':est==='Egresado'?'p-egreso':est==='Suspendido'?'p-suspendido':est==='Vacaciones'?'p-vacaciones':'p-contrato';
     const sede=getSede(w);const sedePill=sede==='Mina Isidora'?'background:#E2EFDA;color:#375623;':'background:#DDEBF7;color:#185FA5;';html+='<tr><td>'+w.cedula+'</td><td><strong>'+(w.apellidos||'')+', '+(w.nombres||'')+'</strong></td><td>'+(w.cargo||'')+'</td><td>'+(w.gerencia||'')+'</td><td><span class="pill" style="'+sedePill+'">'+sede+'</span></td><td>'+(w.tipoNomina||'')+'</td><td>'+ff(w.fechaIngreso)+'</td><td><span class="pill '+pc+'">'+est+'</span></td><td><button class="btn btn-outline bf" data-c="'+w.cedula+'" style="padding:3px 8px;font-size:11px;">Ver ficha</button></td></tr>';
   });
   html += '</tbody></table></div></div>';
@@ -337,11 +342,6 @@ function renderDirectorio(){
   document.getElementById('s-bus').addEventListener('input',function(){
   busqueda=this.value;
   renderDirectorio();
-  // Si la cédula escrita coincide exactamente con un trabajador, abrir su ficha
-  const cedLimpia = this.value.trim().replace(/[^0-9]/g,'');
-  if(cedLimpia && PERSONAL[cedLimpia]){
-    verFicha(cedLimpia);
-  }
 });
   document.getElementById('s-est').addEventListener('change',function(){filtroEstado=this.value;renderDirectorio();});
   document.getElementById('s-nom').addEventListener('change',function(){filtroNomina=this.value;renderDirectorio();});
@@ -430,7 +430,103 @@ function guardarIngreso(){
 // ── MOVIMIENTOS ───────────────────────────────────────────
 function renderMovimientos(){
   const v=document.getElementById('view-movimientos');
-  db.ref('movimientos').orderByChild('timestamp').limitToLast(200).get().then(function(snap){
+
+  // Quick movement registration form
+  let formHtml = '<div class="card" style="margin-bottom:12px;">';
+  formHtml += '<h2>Registrar movimiento por cédula</h2>';
+  formHtml += '<div class="form-grid" style="margin-bottom:10px;">';
+  formHtml += '<div class="form-group"><label>Cédula del trabajador</label><input type="text" id="qm-cedula" placeholder="Ej: 12345678"></div>';
+  formHtml += '<div class="form-group"><label>Tipo de movimiento</label><select id="qm-tipo"><option value="Egreso">Egreso</option><option value="Suspension">Suspensión</option><option value="Reincorporacion">Reincorporación</option><option value="Cambio de cargo">Cambio de cargo</option><option value="Cambio de unidad de adscripcion">Cambio de unidad de adscripción</option><option value="Culminacion de contrato">Culminación de contrato</option><option value="Transferencia de personal">Transferencia de personal</option><option value="Vacaciones">Vacaciones</option></select></div>';
+  formHtml += '<div class="form-group"><label>Fecha</label><input type="date" id="qm-fecha" value="'+today+'"></div>';
+  formHtml += '<div class="form-group"><label>Nuevo cargo / unidad (si aplica)</label><input type="text" id="qm-nuevo" placeholder="Nuevo valor"></div>';
+  formHtml += '<div id="qm-vac-fields" style="display:none;"><div class="form-grid" style="margin-top:8px;"><div class="form-group"><label>Fecha fin de vacaciones</label><input type="date" id="qm-vac-fin"></div><div class="form-group"><label>Período (ej: 2024-2025)</label><input type="text" id="qm-vac-periodo" placeholder="Ej: 2024-2025"></div></div></div>';
+  formHtml += '</div>';
+  formHtml += '<div class="form-group" style="margin-bottom:10px;"><label>Motivo / Detalle</label><input type="text" id="qm-detalle" placeholder="Describe el motivo..."></div>';
+  formHtml += '<div id="qm-nombre-preview" style="font-size:12px;color:var(--azul);min-height:18px;margin-bottom:8px;"></div>';
+  formHtml += '<div class="form-actions"><button class="btn btn-prim" id="btn-qm-guardar">Registrar movimiento</button></div>';
+  formHtml += '<div id="qm-msg" style="margin-top:8px;font-size:12px;"></div>';
+  formHtml += '</div>';
+
+  // Historial placeholder
+  let histHtml = '<div id="hist-container"><div class="muted" style="padding:10px;">Cargando historial...</div></div>';
+  
+  v.innerHTML = formHtml + histHtml;
+
+  // Show/hide vacation fields
+  document.getElementById('qm-tipo').addEventListener('change', function(){
+    const vf = document.getElementById('qm-vac-fields');
+    if(vf) vf.style.display = this.value==='Vacaciones' ? 'block' : 'none';
+  });
+
+  // Preview worker name when cedula is typed
+  document.getElementById('qm-cedula').addEventListener('input', function(){
+    const ced = this.value.trim().replace(/[^0-9]/g,'');
+    const preview = document.getElementById('qm-nombre-preview');
+    if(ced && PERSONAL[ced]){
+      const w = PERSONAL[ced];
+      preview.innerHTML = '✓ <strong>'+(w.apellidos||'')+', '+(w.nombres||'')+'</strong> — '+(w.cargo||'')+' | '+(getSede(w));
+    } else if(ced.length >= 6) {
+      preview.innerHTML = '<span style="color:var(--rojo)">Trabajador no encontrado</span>';
+    } else {
+      preview.innerHTML = '';
+    }
+  });
+
+  // Save quick movement
+  document.getElementById('btn-qm-guardar').addEventListener('click', function(){
+    const ced = document.getElementById('qm-cedula').value.trim().replace(/[^0-9]/g,'');
+    const tipo = document.getElementById('qm-tipo').value;
+    const fecha = document.getElementById('qm-fecha').value;
+    const detalle = document.getElementById('qm-detalle').value.trim();
+    const nuevo = document.getElementById('qm-nuevo').value.trim();
+    const msg = document.getElementById('qm-msg');
+
+    if(!ced){ msg.innerHTML='<span class="danger">Ingresa la cédula.</span>'; return; }
+    if(!PERSONAL[ced]){ msg.innerHTML='<span class="danger">Trabajador no encontrado.</span>'; return; }
+    if(!fecha){ msg.innerHTML='<span class="danger">Selecciona la fecha.</span>'; return; }
+
+    const w = PERSONAL[ced];
+    const mk = db.ref('movimientos').push().key;
+    const upd = {};
+    upd['movimientos/'+mk] = {
+      cedula: ced,
+      nombre: w.nombres+' '+w.apellidos,
+      tipo: tipo, fecha: fecha,
+      detalle: detalle+(nuevo?' → '+nuevo:''),
+      registradoPor: USUARIO_NOMBRE,
+      timestamp: Date.now()
+    };
+    upd['personal/'+ced+'/ultimoMovFecha'] = fecha;
+    if(tipo==='Egreso') upd['personal/'+ced+'/estado']='Egresado';
+    if(tipo==='Suspension') upd['personal/'+ced+'/estado']='Suspendido';
+    if(tipo==='Culminacion de contrato') upd['personal/'+ced+'/estado']='Contrato culminado';
+    if(tipo==='Reincorporacion') upd['personal/'+ced+'/estado']='Activo';
+    if(tipo==='Vacaciones'){
+      upd['personal/'+ced+'/estado']='Vacaciones';
+      const vFin = document.getElementById('qm-vac-fin') ? document.getElementById('qm-vac-fin').value : '';
+      const vPer = document.getElementById('qm-vac-periodo') ? document.getElementById('qm-vac-periodo').value : '';
+      if(vFin) upd['personal/'+ced+'/vacacionesFin']=vFin;
+      if(vPer) upd['personal/'+ced+'/vacacionesPeriodo']=vPer;
+      upd['movimientos/'+mk].detalle='Vacaciones desde '+fecha+(vFin?' hasta '+ff(vFin):'')+(vPer?' | Periodo: '+vPer:'')+(detalle?' | '+detalle:'');
+    }
+    if(tipo==='Cambio de cargo'&&nuevo) upd['personal/'+ced+'/cargo']=nuevo;
+    if(tipo==='Cambio de unidad de adscripcion'&&nuevo) upd['personal/'+ced+'/gerencia']=nuevo;
+
+    msg.textContent = 'Guardando...';
+    db.ref().update(upd).then(function(){
+      msg.innerHTML = '<span style="color:var(--verde)">✓ Movimiento registrado para '+w.apellidos+', '+w.nombres+'</span>';
+      document.getElementById('qm-cedula').value='';
+      document.getElementById('qm-detalle').value='';
+      document.getElementById('qm-nuevo').value='';
+      document.getElementById('qm-nombre-preview').innerHTML='';
+      cargarHistorialMovimientos();
+    }).catch(function(e){ msg.innerHTML='<span class="danger">Error: '+e.message+'</span>'; });
+  });
+
+  cargarHistorialMovimientos();
+
+  function cargarHistorialMovimientos(){
+    db.ref('movimientos').orderByChild('timestamp').limitToLast(200).get().then(function(snap){
     const movs=[];
     snap.forEach(function(ch){movs.unshift(ch.val());});
     let html='<div class="card"><h2>Historial de movimientos</h2><div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Cédula</th><th>Trabajador</th><th>Tipo</th><th>Detalle</th><th>Registrado por</th></tr></thead><tbody>';
@@ -439,9 +535,9 @@ function renderMovimientos(){
       const pc=m.tipo==='Ingreso'?'p-ingreso':m.tipo==='Egreso'?'p-egreso':m.tipo==='Suspension'?'p-suspendido':m.tipo==='Reincorporacion'?'p-activo':'p-contrato';
       html+='<tr><td>'+ff(m.fecha)+'</td><td>'+(m.cedula||'')+'</td><td>'+(m.nombre||'')+'</td><td><span class="pill '+pc+'">'+(m.tipo||'')+'</span></td><td>'+(m.detalle||'')+'</td><td class="muted">'+(m.registradoPor||'')+'</td></tr>';
     });
-    html+='</tbody></table></div></div>';
-    v.innerHTML=html;
+    document.getElementById('hist-container').innerHTML=html;
   });
+  }
 }
 
 // ── FICHA ─────────────────────────────────────────────────
@@ -456,18 +552,24 @@ function renderFicha(){
   const w=PERSONAL[fichaActual];
   if(!w){document.getElementById('view-ficha').innerHTML='<div class="card"><p class="muted">Trabajador no encontrado.</p></div>';return;}
   const est=w.estado||'Activo';
-  const pc=est==='Activo'?'p-activo':est==='Egresado'?'p-egreso':est==='Suspendido'?'p-suspendido':'p-contrato';
+  const pc=est==='Activo'?'p-activo':est==='Egresado'?'p-egreso':est==='Suspendido'?'p-suspendido':est==='Vacaciones'?'p-vacaciones':'p-contrato';
   const inic=((w.nombres||'').charAt(0)+(w.apellidos||'').charAt(0)).toUpperCase();
   const fotoStyle = w.foto ? 'background-image:url('+w.foto+');background-size:cover;background-position:center;' : '';
   const fotoContent = w.foto ? '' : inic;
   const avatarExtra = ROLE==='CHOCO' ? 'title="Clic para cambiar foto" style="cursor:pointer;'+fotoStyle+'" onclick="document.getElementById(\'foto-input-ficha\').click()"' : 'style="'+fotoStyle+'"';
   let acc='';
   if(ROLE==='CHOCO'){
-    acc='<button class="btn btn-ambar bm" data-t="Suspension">Suspender</button><button class="btn btn-rojo bm" data-t="Egreso">Egreso</button><button class="btn btn-outline bm" data-t="">Otro movimiento</button>';
+    acc='<button class="btn btn-outline" onclick="editarTrabajador(\''+fichaActual+'\')" style="font-size:12px;">✏️ Editar</button><button class="btn btn-ambar bm" data-t="Suspension">Suspender</button><button class="btn btn-rojo bm" data-t="Egreso">Egreso</button><button class="btn btn-outline bm" data-t="">Otro movimiento</button>';
     if(est==='Suspendido'||est==='Egresado') acc+='<button class="btn btn-verde bm" data-t="Reincorporacion">Reincorporar</button>';
   }
   let html='<div class="card"><button onclick="tab(\'directorio\')" style="margin-bottom:12px;background:none;border:none;color:var(--azul);font-size:13px;cursor:pointer;padding:0;font-weight:bold;">← Volver al directorio</button>'+(ROLE==='CHOCO'?'<input type="file" id="foto-input-ficha" accept="image/*" style="display:none;">':'')+'<div class="ficha-header"><div class="avatar" '+avatarExtra+'>'+fotoContent+'</div><div class="ficha-info"><h3>'+(w.apellidos||'')+', '+(w.nombres||'')+'</h3><p>C.I: '+w.cedula+' · '+(w.cargo||'')+' · <span class="pill '+pc+'">'+est+'</span></p><p class="muted">'+(w.gerencia||'')+' '+(w.tipoNomina?'· '+w.tipoNomina:'')+'</p><p><span class="pill" style="'+(getSede(w)==='Mina Isidora'?'background:#E2EFDA;color:#375623;':'background:#DDEBF7;color:#185FA5;')+'">'+getSede(w)+'</span></p></div><div class="ficha-acciones">'+acc+'</div></div>';
   // Add suspension alert if suspended
+if(est==='Vacaciones'){
+  html+='<div style="background:#F3E8FF;border:1px solid #9B59B6;border-radius:8px;padding:12px;margin-bottom:14px;">';
+  html+='<div style="font-weight:bold;color:#6B2FA0;margin-bottom:6px;">🏖 Trabajador de vacaciones</div>';
+  html+='<div style="font-size:12px;color:#6B2FA0;">'+(w.ultimoMovFecha?'<b>Fecha inicio:</b> '+ff(w.ultimoMovFecha):'')+(w.vacacionesFin?'<br><b>Fecha fin:</b> '+ff(w.vacacionesFin):'')+(w.vacacionesPeriodo?'<br><b>Período:</b> '+w.vacacionesPeriodo:'')+'</div>';
+  html+='</div>';
+}
 if(est==='Suspendido'){
   html+='<div style="background:var(--ambarbg);border:1px solid var(--ambar);border-radius:8px;padding:12px;margin-bottom:14px;">';
   html+='<div style="font-weight:bold;color:var(--ambar);margin-bottom:6px;">⚠ Trabajador suspendido</div>';
@@ -493,20 +595,35 @@ if(ROLE==='CHOCO'){
     fotoInput.addEventListener('change', function(){
       if(!this.files||!this.files[0]) return;
       const file = this.files[0];
-      if(file.size > 2*1024*1024){ alert('La foto no debe superar 2MB.'); return; }
+      if(file.size > 5*1024*1024){ alert('La foto no debe superar 5MB.'); return; }
       const reader = new FileReader();
       reader.onload = function(e){
-        const base64 = e.target.result;
-        db.ref('personal/'+fichaActual+'/foto').set(base64).then(function(){
-          // Update avatar visually
-          const av = document.querySelector('.ficha-header .avatar');
-          if(av){
-            av.style.backgroundImage = 'url('+base64+')';
-            av.style.backgroundSize = 'cover';
-            av.style.backgroundPosition = 'center';
-            av.textContent = '';
-          }
-        }).catch(function(e){ alert('Error subiendo foto: '+e.message); });
+        // Compress image to max 200x200px
+        const img = new Image();
+        img.onload = function(){
+          const canvas = document.createElement('canvas');
+          const MAX = 200;
+          let w = img.width, h = img.height;
+          if(w > h){ if(w>MAX){h=Math.round(h*MAX/w);w=MAX;} }
+          else { if(h>MAX){w=Math.round(w*MAX/h);h=MAX;} }
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          const base64 = canvas.toDataURL('image/jpeg', 0.75);
+          const originalKB = Math.round(file.size/1024);
+          const compressedKB = Math.round(base64.length*0.75/1024);
+          db.ref('personal/'+fichaActual+'/foto').set(base64).then(function(){
+            const av = document.querySelector('.ficha-header .avatar');
+            if(av){
+              av.style.backgroundImage = 'url('+base64+')';
+              av.style.backgroundSize = 'cover';
+              av.style.backgroundPosition = 'center';
+              av.textContent = '';
+            }
+            console.log('Foto comprimida: '+originalKB+'KB → '+compressedKB+'KB');
+          }).catch(function(e){ alert('Error subiendo foto: '+e.message); });
+        };
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
     });
