@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Control de Personal - Planta Chocó CVM</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+if(!firebase.apps.length){
+  firebase.initializeApp({
+    apiKey: "AIzaSyCsi_mV-I8liJHdqcPVDXBMXjzOpXmfT3s",
+    databaseURL: "https://personal-choco-cvm-default-rtdb.firebaseio.com"
+  });
+}
+var db = firebase.database();
+</script>
 <style>
 :root{--azul:#185FA5;--azulbg:#E6F1FB;--verde:#27500A;--verdebg:#EAF3DE;--rojo:#A32D2D;--rojobg:#FCEBEB;--ambar:#854F0B;--ambarbg:#FAEEDA;--gris:#5F5E5A;--grisbg:#F1EFE8;--borde:#D3D1C7;--texto:#2C2C2A;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -186,14 +197,7 @@ const USUARIOS = {
   'rrhh.caracas': { clave: 'caracas2026', rol: 'CARACAS', nombre: 'RRHH Caracas' }
 };
 
-// ── FIREBASE CONFIG ───────────────────────────────────────
-const firebaseConfig = {
-  apiKey: "AIzaSyCsi_mV-I8liJHdqcPVDXBMXjzOpXmfT3s",
-  databaseURL: "https://personal-choco-cvm-default-rtdb.firebaseio.com"
-};
-if(!firebase.apps||!firebase.apps.length){
-  // Firebase cargado via CDN abajo
-}
+
 
 // ── ESTADO ────────────────────────────────────────────────
 let ROLE = null;
@@ -522,16 +526,6 @@ function ff(f){if(!f)return'';try{const[y,m,d]=f.split('-');return d+'/'+m+'/'+y
 </script>
 
 <!-- Firebase SDK (sin Auth) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script>
-if(!firebase.apps.length){
-  firebase.initializeApp({
-    apiKey: "AIzaSyCsi_mV-I8liJHdqcPVDXBMXjzOpXmfT3s",
-    databaseURL: "https://personal-choco-cvm-default-rtdb.firebaseio.com"
-  });
-}
-db = firebase.database();
-</script>
+
 </body>
 </html>
