@@ -8,11 +8,11 @@ const firebaseConfig = {
   projectId: "personal-choco-cvm",
   storageBucket: "personal-choco-cvm.firebasestorage.app",
   messagingSenderId: "324713522900",
-  appId: "1:324713522900:web:0dcbb6e63114755be0bd41",
-  measurementId: "G-ZM75M87WJ6"
+  appId: "1:324713522900:web:0dcbb6e63114755be0bd41"
 };
 
-// No edites debajo de esta linea
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 const auth = firebase.auth();
 const db   = firebase.database();
