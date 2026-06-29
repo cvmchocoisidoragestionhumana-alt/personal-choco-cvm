@@ -1,6 +1,6 @@
-// =========================================================
+// ============================================================
 // CONFIGURACION DE FIREBASE  -  personal-choco-cvm
-// =========================================================
+// ============================================================
 const firebaseConfig = {
   apiKey: "AIzaSyCsi_mV-I8liJHdqcPVDXBMXjzOpXmfT3s",
   authDomain: "personal-choco-cvm.firebaseapp.com",
@@ -14,5 +14,5 @@ const firebaseConfig = {
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
-const auth = firebase.auth();
-const db   = firebase.database();
+const db = firebase.database();
+window.db = db;
