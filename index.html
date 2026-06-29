@@ -6,7 +6,7 @@
 <title>Control de Personal - Planta Chocó CVM</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="firebase-config.js?v=20"></script>
+<script src="firebase-config.js?v=21"></script>
 <style>
 :root{--azul:#185FA5;--azulbg:#E6F1FB;--verde:#27500A;--verdebg:#EAF3DE;--rojo:#A32D2D;--rojobg:#FCEBEB;--ambar:#854F0B;--ambarbg:#FAEEDA;--gris:#5F5E5A;--grisbg:#F1EFE8;--borde:#D3D1C7;--texto:#2C2C2A;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -319,6 +319,29 @@ function renderDirectorio(){
   html += '<select id="s-sede"><option value="">Todas las sedes</option><option'+(filtroSede==="Planta Chocó"?' selected':'')+' value="Planta Chocó">Planta Chocó</option><option'+(filtroSede==="Mina Isidora"?' selected':'')+' value="Mina Isidora">Mina Isidora</option></select>';
   html += '<select id="s-nom"><option value="">Todos los tipos</option><option'+(filtroNomina==='Operativos'?' selected':'')+' value="Operativos">Operativos</option><option'+(filtroNomina==='Contratados'?' selected':'')+' value="Contratados">Contratados</option><option'+(filtroNomina==='Empleados'?' selected':'')+' value="Empleados">Empleados</option><option'+(filtroNomina==='Direccion y Confianza'?' selected':'')+' value="Direccion Y Confianza">Dirección y Confianza</option></select>';
   html += '<button class="btn btn-prim" id="btn-exp">Exportar Excel</button></div>';
+
+  // ── PANEL DE CONTEO (se recalcula con los filtros) ──
+  var cChoco=0, cIsidora=0;
+  var nomCount={};
+  lista.forEach(function(w){
+    if(getSede(w)==='Mina Isidora') cIsidora++; else cChoco++;
+    var nm=(w.tipoNomina||'Sin nómina').trim()||'Sin nómina';
+    nomCount[nm]=(nomCount[nm]||0)+1;
+  });
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;">';
+  html += '<div class="kpi" style="background:var(--azulbg);"><div class="l">Total filtrado</div><div class="v" style="color:var(--azul);">'+lista.length+'</div></div>';
+  html += '<div class="kpi" style="background:#DDEBF7;"><div class="l">Planta Chocó</div><div class="v" style="color:#185FA5;">'+cChoco+'</div></div>';
+  html += '<div class="kpi" style="background:#E2EFDA;"><div class="l">Mina Isidora</div><div class="v" style="color:#375623;">'+cIsidora+'</div></div>';
+  html += '</div>';
+  var nomKeys=Object.keys(nomCount).sort();
+  if(nomKeys.length){
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;">';
+    nomKeys.forEach(function(nm){
+      html += '<div class="kpi" style="background:var(--grisbg);"><div class="l">'+nm+'</div><div class="v" style="color:var(--gris);font-size:22px;">'+nomCount[nm]+'</div></div>';
+    });
+    html += '</div>';
+  }
+
   html += '<div class="muted" style="margin-bottom:8px;">'+lista.length+' trabajador(es)</div>';
   html += '<div class="tablewrap"><table><thead><tr><th>Cédula</th><th>Nombre y apellido</th><th>Cargo</th><th>Gerencia</th><th>Sede</th><th>Tipo nómina</th><th>F. Ingreso</th><th>Estado</th><th></th></tr></thead><tbody>';
   lista.slice(0,500).forEach(function(w){
@@ -503,17 +526,44 @@ function renderMovimientos(){
   cargarHistorialMovimientos();
 
   function cargarHistorialMovimientos(){
-    window.db.ref('movimientos').orderByChild('timestamp').limitToLast(200).get().then(function(snap){
+    window.db.ref('movimientos').orderByChild('timestamp').limitToLast(500).get().then(function(snap){
       var movs=[];
       snap.forEach(function(ch){movs.unshift(ch.val());});
-      var html='<div class="card"><h2>Historial de movimientos</h2><div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Cédula</th><th>Trabajador</th><th>Tipo</th><th>Detalle</th><th>Registrado por</th></tr></thead><tbody>';
-      if(!movs.length) html+='<tr><td colspan="6" class="muted" style="text-align:center;padding:20px;">Sin movimientos.</td></tr>';
-      movs.forEach(function(m){
-        var pc=m.tipo==='Ingreso'?'p-ingreso':m.tipo==='Egreso'?'p-egreso':m.tipo==='Suspension'?'p-suspendido':m.tipo==='Reincorporacion'?'p-activo':'p-contrato';
-        html+='<tr><td>'+ff(m.fecha)+'</td><td>'+(m.cedula||'')+'</td><td>'+(m.nombre||'')+'</td><td><span class="pill '+pc+'">'+(m.tipo||'')+'</span></td><td>'+(m.detalle||'')+'</td><td class="muted">'+(m.registradoPor||'')+'</td></tr>';
+
+      // Conteo por tipo
+      var tipoCount={};
+      movs.forEach(function(m){ var t=m.tipo||'Otro'; tipoCount[t]=(tipoCount[t]||0)+1; });
+      var tipoKeys=Object.keys(tipoCount).sort();
+
+      var html='<div class="card"><h2>Historial de movimientos</h2>';
+      // Panel de conteo
+      html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;">';
+      html+='<div class="kpi" style="background:var(--azulbg);"><div class="l">Total movimientos</div><div class="v" style="color:var(--azul);">'+movs.length+'</div></div>';
+      tipoKeys.forEach(function(t){
+        html+='<div class="kpi" style="background:var(--grisbg);"><div class="l">'+t+'</div><div class="v" style="color:var(--gris);font-size:22px;">'+tipoCount[t]+'</div></div>';
       });
+      html+='</div>';
+      // Filtro por tipo
+      html+='<div class="searchbar" style="margin-bottom:10px;"><select id="mov-filtro-tipo" style="min-width:220px;"><option value="">Todos los tipos de movimiento</option>';
+      tipoKeys.forEach(function(t){ html+='<option value="'+t+'">'+t+' ('+tipoCount[t]+')</option>'; });
+      html+='</select></div>';
+      html+='<div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Cédula</th><th>Trabajador</th><th>Tipo</th><th>Detalle</th><th>Registrado por</th></tr></thead><tbody id="mov-tbody">';
       html+='</tbody></table></div></div>';
       document.getElementById('hist-container').innerHTML=html;
+
+      function pintarFilas(filtroTipo){
+        var tb=document.getElementById('mov-tbody');
+        var f=movs.filter(function(m){ return !filtroTipo || (m.tipo||'Otro')===filtroTipo; });
+        var rows='';
+        if(!f.length) rows='<tr><td colspan="6" class="muted" style="text-align:center;padding:20px;">Sin movimientos.</td></tr>';
+        f.forEach(function(m){
+          var pc=m.tipo==='Ingreso'?'p-ingreso':m.tipo==='Egreso'?'p-egreso':m.tipo==='Suspension'?'p-suspendido':m.tipo==='Reincorporacion'?'p-activo':'p-contrato';
+          rows+='<tr><td>'+ff(m.fecha)+'</td><td>'+(m.cedula||'')+'</td><td>'+(m.nombre||'')+'</td><td><span class="pill '+pc+'">'+(m.tipo||'')+'</span></td><td>'+(m.detalle||'')+'</td><td class="muted">'+(m.registradoPor||'')+'</td></tr>';
+        });
+        tb.innerHTML=rows;
+      }
+      pintarFilas('');
+      document.getElementById('mov-filtro-tipo').addEventListener('change', function(){ pintarFilas(this.value); });
     });
   }
 }
