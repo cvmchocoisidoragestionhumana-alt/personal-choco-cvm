@@ -6,7 +6,7 @@
 <title>Control de Personal - Planta Chocó CVM</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="firebase-config.js?v=23"></script>
+<script src="firebase-config.js?v=24"></script>
 <style>
 :root{--azul:#185FA5;--azulbg:#E6F1FB;--verde:#27500A;--verdebg:#EAF3DE;--rojo:#A32D2D;--rojobg:#FCEBEB;--ambar:#854F0B;--ambarbg:#FAEEDA;--gris:#5F5E5A;--grisbg:#F1EFE8;--borde:#D3D1C7;--texto:#2C2C2A;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -450,6 +450,7 @@ function renderIngreso(){
     +'<div class="form-grid">'
     +'<div class="form-group"><label>Cargo *</label><input type="text" id="f-cargo"></div>'
     +'<div class="form-group"><label>Gerencia *</label><input type="text" id="f-gerencia"></div>'
+    +'<div class="form-group"><label>Coordinación</label><input type="text" id="f-coordinacion"></div>'
     +'<div class="form-group"><label>Ubicación física</label><input type="text" id="f-ubic"></div>'
     +'<div class="form-group"><label>F. Ingreso *</label><input type="date" id="f-fing"></div>'
     +'<div class="form-group"><label>Tipo nómina</label><select id="f-nomina"><option value="">Seleccionar</option><option>Operativos</option><option>Contratados</option><option>Empleados</option><option value="Direccion Y Confianza">Dirección y Confianza</option></select></div>'
@@ -482,7 +483,7 @@ function guardarIngreso(){
   if(!ced||!nom||!ape||!cargo||!ger||!fing){msg.innerHTML='<span class="danger">Completa los campos obligatorios (*)</span>';return;}
   if(PERSONAL[ced]){msg.innerHTML='<span class="danger">Ya existe un trabajador con esa cédula.</span>';return;}
   msg.textContent='Guardando...';
-  var datos={cedula:ced,nombres:nom,apellidos:ape,sexo:g('f-sexo'),nacionalidad:g('f-nac'),fechaNacimiento:g('f-fnac'),lugarNacimiento:g('f-lugar'),estadoCivil:g('f-ecivil'),tipoSangre:g('f-sangre'),profesion:g('f-prof'),estado_geo:g('f-est-geo'),municipio_geo:g('f-mun-geo'),direccion:g('f-dir'),telefono:g('f-tel'),correo:g('f-correo'),cuentaBancaria:g('f-cuenta'),cvNombre:g('f-cv-nom'),cvEstado:g('f-cv-est'),cvMunicipio:g('f-cv-mun'),cargo:cargo,gerencia:ger,ubicacion:g('f-ubic'),fechaIngreso:fing,tipoNomina:g('f-nomina'),tipoContrato:g('f-contrato'),tallaCamisa:g('f-camisa'),tallaPantalon:g('f-pantalon'),tallaBraga:g('f-braga'),tallaZapato:g('f-zapato'),zurdo:g('f-zurdo'),estado:'Activo',fechaRegistro:today,registradoPor:USUARIO_NOMBRE};
+  var datos={cedula:ced,nombres:nom,apellidos:ape,sexo:g('f-sexo'),nacionalidad:g('f-nac'),fechaNacimiento:g('f-fnac'),lugarNacimiento:g('f-lugar'),estadoCivil:g('f-ecivil'),tipoSangre:g('f-sangre'),profesion:g('f-prof'),estado_geo:g('f-est-geo'),municipio_geo:g('f-mun-geo'),direccion:g('f-dir'),telefono:g('f-tel'),correo:g('f-correo'),cuentaBancaria:g('f-cuenta'),cvNombre:g('f-cv-nom'),cvEstado:g('f-cv-est'),cvMunicipio:g('f-cv-mun'),cargo:cargo,gerencia:ger,coordinacion:g('f-coordinacion'),ubicacion:g('f-ubic'),fechaIngreso:fing,tipoNomina:g('f-nomina'),tipoContrato:g('f-contrato'),tallaCamisa:g('f-camisa'),tallaPantalon:g('f-pantalon'),tallaBraga:g('f-braga'),tallaZapato:g('f-zapato'),zurdo:g('f-zurdo'),estado:'Activo',fechaRegistro:today,registradoPor:USUARIO_NOMBRE};
   var mk=window.db.ref('movimientos').push().key;
   var upd={};
   upd['personal/'+ced]=datos;
@@ -678,7 +679,7 @@ function renderFicha(){
   html+='<div class="ficha-grid"><div><div class="block-title">Datos personales</div>';
   [['Sexo',w.sexo],['Nacionalidad',w.nacionalidad],['F. Nacimiento',ff(w.fechaNacimiento)],['Lugar nacimiento',w.lugarNacimiento],['Estado civil',w.estadoCivil],['Tipo de sangre',w.tipoSangre],['Profesión',w.profesion],['Estado (res.)',w.estado_geo],['Municipio',w.municipio_geo],['Dirección',w.direccion],['Teléfono',w.telefono],['Correo',w.correo],['Cuenta bancaria',w.cuentaBancaria]].forEach(function(r){html+=fr(r[0],r[1]);});
   html+='</div><div><div class="block-title">Datos laborales</div>';
-  [['Cargo',w.cargo],['Gerencia',w.gerencia],['Ubicación',w.ubicacion],['F. Ingreso',ff(w.fechaIngreso)],['Tipo nómina',w.tipoNomina],['Tipo contrato',w.tipoContrato]].forEach(function(r){html+=fr(r[0],r[1]);});
+  [['Cargo',w.cargo],['Gerencia',w.gerencia],['Coordinación',w.coordinacion],['Ubicación',w.ubicacion],['F. Ingreso',ff(w.fechaIngreso)],['Tipo nómina',w.tipoNomina],['Tipo contrato',w.tipoContrato]].forEach(function(r){html+=fr(r[0],r[1]);});
   html+='<div class="block-title" style="margin-top:12px;">Tallas</div>';
   [['Camisa',w.tallaCamisa],['Pantalón',w.tallaPantalon],['Braga',w.tallaBraga],['Zapato',w.tallaZapato],['Zurdo',w.zurdo]].forEach(function(r){html+=fr(r[0],r[1]);});
   html+='<div class="block-title" style="margin-top:12px;">Centro de votación</div>';
@@ -814,6 +815,7 @@ function editarTrabajador(cedula){
     +'<div class="form-section">Datos laborales</div><div class="form-grid">'
     +campo('Cargo','e-cargo',w.cargo)
     +campo('Gerencia','e-gerencia',w.gerencia)
+    +campo('Coordinación','e-coordinacion',w.coordinacion)
     +campo('Ubicación física','e-ubicacion',w.ubicacion)
     +campo('F. Ingreso (YYYY-MM-DD)','e-fingreso',w.fechaIngreso)
     +sel('Tipo nómina','e-tipo-nomina',w.tipoNomina,['','Operativos','Contratados','Empleados','Direccion Y Confianza'])
@@ -854,6 +856,7 @@ function editarTrabajador(cedula){
       estado_geo:g('e-estado-geo'), municipio_geo:g('e-municipio-geo'),
       estadoCivil:g('e-estado-civil'), tipoSangre:g('e-tipo-sangre'),
       cargo:g('e-cargo'), gerencia:g('e-gerencia'),
+      coordinacion:g('e-coordinacion'),
       ubicacion:g('e-ubicacion'), fechaIngreso:g('e-fingreso'),
       tipoNomina:g('e-tipo-nomina'), tipoContrato:g('e-tipo-contrato'),
       tallaCamisa:g('e-camisa'), tallaPantalon:g('e-pantalon'),
@@ -912,9 +915,9 @@ document.getElementById('btn-guardar-mov').addEventListener('click', function(){
 // ── EXPORTAR ──────────────────────────────────────────────
 function exportarExcel(){
   if(typeof XLSX==='undefined'){alert('Librería no disponible.');return;}
-  var rows=[['Cédula','Nombres','Apellidos','Sexo','Nacionalidad','F.Nacimiento','Estado civil','Tipo sangre','Profesión','Estado geo','Municipio','Dirección','Teléfono','Correo','Cuenta bancaria','CV Nombre','CV Estado','CV Municipio','Cargo','Gerencia','Ubicación','F.Ingreso','Tipo nómina','Tipo contrato','Camisa','Pantalón','Braga','Zapato','Zurdo','Estado laboral']];
+  var rows=[['Cédula','Nombres','Apellidos','Sexo','Nacionalidad','F.Nacimiento','Estado civil','Tipo sangre','Profesión','Estado geo','Municipio','Dirección','Teléfono','Correo','Cuenta bancaria','CV Nombre','CV Estado','CV Municipio','Cargo','Gerencia','Coordinación','Ubicación','F.Ingreso','Tipo nómina','Tipo contrato','Camisa','Pantalón','Braga','Zapato','Zurdo','Estado laboral']];
   Object.values(PERSONAL).forEach(function(w){
-    rows.push([w.cedula,w.nombres,w.apellidos,w.sexo,w.nacionalidad,w.fechaNacimiento,w.estadoCivil,w.tipoSangre,w.profesion,w.estado_geo,w.municipio_geo,w.direccion,w.telefono,w.correo,w.cuentaBancaria,w.cvNombre,w.cvEstado,w.cvMunicipio,w.cargo,w.gerencia,w.ubicacion,w.fechaIngreso,w.tipoNomina,w.tipoContrato,w.tallaCamisa,w.tallaPantalon,w.tallaBraga,w.tallaZapato,w.zurdo,w.estado||'Activo']);
+    rows.push([w.cedula,w.nombres,w.apellidos,w.sexo,w.nacionalidad,w.fechaNacimiento,w.estadoCivil,w.tipoSangre,w.profesion,w.estado_geo,w.municipio_geo,w.direccion,w.telefono,w.correo,w.cuentaBancaria,w.cvNombre,w.cvEstado,w.cvMunicipio,w.cargo,w.gerencia,w.coordinacion,w.ubicacion,w.fechaIngreso,w.tipoNomina,w.tipoContrato,w.tallaCamisa,w.tallaPantalon,w.tallaBraga,w.tallaZapato,w.zurdo,w.estado||'Activo']);
   });
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Personal');
