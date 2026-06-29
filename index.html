@@ -6,7 +6,7 @@
 <title>Control de Personal - Planta Chocó CVM</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="firebase-config.js?v=21"></script>
+<script src="firebase-config.js?v=22"></script>
 <style>
 :root{--azul:#185FA5;--azulbg:#E6F1FB;--verde:#27500A;--verdebg:#EAF3DE;--rojo:#A32D2D;--rojobg:#FCEBEB;--ambar:#854F0B;--ambarbg:#FAEEDA;--gris:#5F5E5A;--grisbg:#F1EFE8;--borde:#D3D1C7;--texto:#2C2C2A;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -199,7 +199,7 @@ var PERSONAL = {};
 var MOV_TRABAJADOR = null;
 var fichaActual = null;
 var TAB = 'directorio';
-var filtroEstado = '', filtroNomina = '', filtroSede = '', busqueda = '';
+var filtroEstado = '', filtroNomina = '', filtroSede = '', filtroGerencia = '', busqueda = '';
 var today = new Date().toISOString().slice(0,10);
 
 // ── LOGIN ─────────────────────────────────────────────────
@@ -310,14 +310,28 @@ function renderDirectorio(){
     if(filtroEstado && (w.estado||'Activo')!==filtroEstado) return false;
     if(filtroNomina && (w.tipoNomina||'').toLowerCase()!==filtroNomina.toLowerCase()) return false;
     if(filtroSede && getSede(w)!==filtroSede) return false;
+    if(filtroGerencia && (w.gerencia||'').trim()!==filtroGerencia) return false;
     return true;
   });
+
+  // Lista de gerencias/coordinaciones existentes (para el desplegable)
+  var gerenciasSet={};
+  Object.values(PERSONAL).forEach(function(w){
+    var g=(w.gerencia||'').trim();
+    if(g) gerenciasSet[g]=true;
+  });
+  var gerenciasArr=Object.keys(gerenciasSet).sort();
 
   var html = '<div class="card"><div class="searchbar">';
   html += '<input type="text" id="s-bus" placeholder="Buscar cédula, nombre o apellido..." value="'+busqueda+'">';
   html += '<select id="s-est"><option value="">Todos los estados</option><option'+(filtroEstado==='Activo'?' selected':'')+' value="Activo">Activo</option><option'+(filtroEstado==='Egresado'?' selected':'')+' value="Egresado">Egresado</option><option'+(filtroEstado==='Suspendido'?' selected':'')+' value="Suspendido">Suspendido</option><option'+(filtroEstado==='Contrato culminado'?' selected':'')+' value="Contrato culminado">Contrato culminado</option></select>';
   html += '<select id="s-sede"><option value="">Todas las sedes</option><option'+(filtroSede==="Planta Chocó"?' selected':'')+' value="Planta Chocó">Planta Chocó</option><option'+(filtroSede==="Mina Isidora"?' selected':'')+' value="Mina Isidora">Mina Isidora</option></select>';
   html += '<select id="s-nom"><option value="">Todos los tipos</option><option'+(filtroNomina==='Operativos'?' selected':'')+' value="Operativos">Operativos</option><option'+(filtroNomina==='Contratados'?' selected':'')+' value="Contratados">Contratados</option><option'+(filtroNomina==='Empleados'?' selected':'')+' value="Empleados">Empleados</option><option'+(filtroNomina==='Direccion y Confianza'?' selected':'')+' value="Direccion Y Confianza">Dirección y Confianza</option></select>';
+  html += '<select id="s-ger" style="max-width:280px;"><option value="">Todas las gerencias/coordinaciones</option>';
+  gerenciasArr.forEach(function(g){
+    html += '<option'+(filtroGerencia===g?' selected':'')+' value="'+g.replace(/"/g,'&quot;')+'">'+g+'</option>';
+  });
+  html += '</select>';
   html += '<button class="btn btn-prim" id="btn-exp">Exportar Excel</button></div>';
 
   // ── PANEL DE CONTEO (se recalcula con los filtros) ──
@@ -332,6 +346,9 @@ function renderDirectorio(){
   html += '<div class="kpi" style="background:var(--azulbg);"><div class="l">Total filtrado</div><div class="v" style="color:var(--azul);">'+lista.length+'</div></div>';
   html += '<div class="kpi" style="background:#DDEBF7;"><div class="l">Planta Chocó</div><div class="v" style="color:#185FA5;">'+cChoco+'</div></div>';
   html += '<div class="kpi" style="background:#E2EFDA;"><div class="l">Mina Isidora</div><div class="v" style="color:#375623;">'+cIsidora+'</div></div>';
+  if(filtroGerencia){
+    html += '<div class="kpi" style="background:var(--ambarbg);"><div class="l">'+filtroGerencia+'</div><div class="v" style="color:var(--ambar);font-size:20px;">'+lista.length+'</div></div>';
+  }
   html += '</div>';
   var nomKeys=Object.keys(nomCount).sort();
   if(nomKeys.length){
@@ -358,6 +375,7 @@ function renderDirectorio(){
   document.getElementById('s-est').addEventListener('change',function(){ filtroEstado=this.value; renderDirectorio(); });
   document.getElementById('s-nom').addEventListener('change',function(){ filtroNomina=this.value; renderDirectorio(); });
   document.getElementById('s-sede').addEventListener('change',function(){ filtroSede=this.value; renderDirectorio(); });
+  document.getElementById('s-ger').addEventListener('change',function(){ filtroGerencia=this.value; renderDirectorio(); });
   document.getElementById('btn-exp').addEventListener('click', exportarExcel);
   document.querySelectorAll('.bf').forEach(function(b){ b.addEventListener('click',function(){ verFicha(this.dataset.c); }); });
 }
