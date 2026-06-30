@@ -6,7 +6,7 @@
 <title>Control de Personal - Planta Chocó CVM</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="firebase-config.js?v=24"></script>
+<script src="firebase-config.js?v=25"></script>
 <style>
 :root{--azul:#185FA5;--azulbg:#E6F1FB;--verde:#27500A;--verdebg:#EAF3DE;--rojo:#A32D2D;--rojobg:#FCEBEB;--ambar:#854F0B;--ambarbg:#FAEEDA;--gris:#5F5E5A;--grisbg:#F1EFE8;--borde:#D3D1C7;--texto:#2C2C2A;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -302,15 +302,6 @@ function getSede(w){
   return 'Planta Chocó';
 }
 
-// Clasifica un valor de gerencia/coordinación por su texto
-function tipoUnidad(texto){
-  var t=(texto||'').toUpperCase().trim();
-  if(!t) return 'sin';
-  if(t.indexOf('GERENCIA')===0 || t.indexOf('GCIA')===0) return 'gerencia';
-  if(t.indexOf('COORD')===0) return 'coordinacion';
-  return 'otro';
-}
-
 function renderDirectorio(){
   var v = document.getElementById('view-directorio');
   var lista = Object.values(PERSONAL).filter(function(w){
@@ -320,23 +311,28 @@ function renderDirectorio(){
     if(filtroNomina && (w.tipoNomina||'').toLowerCase()!==filtroNomina.toLowerCase()) return false;
     if(filtroSede && getSede(w)!==filtroSede) return false;
     if(filtroGerencia && (w.gerencia||'').trim()!==filtroGerencia) return false;
-    if(filtroCoord && (w.gerencia||'').trim()!==filtroCoord) return false;
+    if(filtroCoord && (w.coordinacion||'').trim()!==filtroCoord) return false;
     return true;
   });
 
-  // Clasificar valores existentes en gerencias, coordinaciones y otros
-  var gerSet={}, coordSet={}, otroSet={};
+  // ── GERENCIAS: leer directamente el campo gerencia ──
+  var gerSet={};
   Object.values(PERSONAL).forEach(function(w){
     var g=(w.gerencia||'').trim();
-    if(!g) return;
-    var tipo=tipoUnidad(g);
-    if(tipo==='gerencia') gerSet[g]=true;
-    else if(tipo==='coordinacion') coordSet[g]=true;
-    else otroSet[g]=true;
+    if(g) gerSet[g]=true;
   });
   var gerArr=Object.keys(gerSet).sort();
+
+  // ── COORDINACIONES: leer campo coordinacion, jerárquico por gerencia ──
+  var coordSet={};
+  Object.values(PERSONAL).forEach(function(w){
+    var c=(w.coordinacion||'').trim();
+    if(!c) return;
+    // Si hay gerencia seleccionada, solo mostrar coordinaciones de esa gerencia
+    if(filtroGerencia && (w.gerencia||'').trim()!==filtroGerencia) return;
+    coordSet[c]=true;
+  });
   var coordArr=Object.keys(coordSet).sort();
-  var otroArr=Object.keys(otroSet).sort();
 
   var html = '<div class="card"><div class="searchbar">';
   html += '<input type="text" id="s-bus" placeholder="Buscar cédula, nombre o apellido..." value="'+busqueda+'">';
@@ -349,19 +345,12 @@ function renderDirectorio(){
     html += '<option'+(filtroGerencia===g?' selected':'')+' value="'+g.replace(/"/g,'&quot;')+'">'+g+'</option>';
   });
   html += '</select>';
-  // Filtro COORDINACIONES
-  html += '<select id="s-coord" style="max-width:260px;"><option value="">Todas las coordinaciones ('+coordArr.length+')</option>';
-  coordArr.forEach(function(g){
-    html += '<option'+(filtroCoord===g?' selected':'')+' value="'+g.replace(/"/g,'&quot;')+'">'+g+'</option>';
+  // Filtro COORDINACIONES (jerárquico)
+  var lblCoord = filtroGerencia ? 'Coordinaciones de la gerencia' : 'Todas las coordinaciones';
+  html += '<select id="s-coord" style="max-width:260px;"><option value="">'+lblCoord+' ('+coordArr.length+')</option>';
+  coordArr.forEach(function(c){
+    html += '<option'+(filtroCoord===c?' selected':'')+' value="'+c.replace(/"/g,'&quot;')+'">'+c+'</option>';
   });
-  // Grupo "Otros / Sin clasificar" dentro del mismo desplegable de coordinaciones, para detectarlos
-  if(otroArr.length){
-    html += '<optgroup label="⚠ Otros / Sin clasificar ('+otroArr.length+')">';
-    otroArr.forEach(function(g){
-      html += '<option'+(filtroCoord===g?' selected':'')+' value="'+g.replace(/"/g,'&quot;')+'">'+g+'</option>';
-    });
-    html += '</optgroup>';
-  }
   html += '</select>';
   html += '<button class="btn btn-prim" id="btn-exp">Exportar Excel</button></div>';
 
@@ -377,7 +366,7 @@ function renderDirectorio(){
   html += '<div class="kpi" style="background:var(--azulbg);"><div class="l">Total filtrado</div><div class="v" style="color:var(--azul);">'+lista.length+'</div></div>';
   html += '<div class="kpi" style="background:#DDEBF7;"><div class="l">Planta Chocó</div><div class="v" style="color:#185FA5;">'+cChoco+'</div></div>';
   html += '<div class="kpi" style="background:#E2EFDA;"><div class="l">Mina Isidora</div><div class="v" style="color:#375623;">'+cIsidora+'</div></div>';
-  var unidadFiltrada = filtroGerencia || filtroCoord;
+  var unidadFiltrada = filtroCoord || filtroGerencia;
   if(unidadFiltrada){
     html += '<div class="kpi" style="background:var(--ambarbg);"><div class="l">'+unidadFiltrada+'</div><div class="v" style="color:var(--ambar);font-size:20px;">'+lista.length+'</div></div>';
   }
@@ -392,13 +381,13 @@ function renderDirectorio(){
   }
 
   html += '<div class="muted" style="margin-bottom:8px;">'+lista.length+' trabajador(es)</div>';
-  html += '<div class="tablewrap"><table><thead><tr><th>Cédula</th><th>Nombre y apellido</th><th>Cargo</th><th>Gerencia</th><th>Sede</th><th>Tipo nómina</th><th>F. Ingreso</th><th>Estado</th><th></th></tr></thead><tbody>';
-  lista.slice(0,500).forEach(function(w){
+  html += '<div class="tablewrap"><table><thead><tr><th>Cédula</th><th>Nombre y apellido</th><th>Cargo</th><th>Gerencia</th><th>Coordinación</th><th>Sede</th><th>Tipo nómina</th><th>F. Ingreso</th><th>Estado</th><th></th></tr></thead><tbody>';
+  lista.slice(0,1100).forEach(function(w){
     var est=w.estado||'Activo';
     var pc=est==='Activo'?'p-activo':est==='Egresado'?'p-egreso':est==='Suspendido'?'p-suspendido':est==='Vacaciones'?'p-vacaciones':'p-contrato';
     var sede=getSede(w);
     var sedePill=sede==='Mina Isidora'?'background:#E2EFDA;color:#375623;':'background:#DDEBF7;color:#185FA5;';
-    html+='<tr><td>'+w.cedula+'</td><td><strong>'+(w.apellidos||'')+', '+(w.nombres||'')+'</strong></td><td>'+(w.cargo||'')+'</td><td>'+(w.gerencia||'')+'</td><td><span class="pill" style="'+sedePill+'">'+sede+'</span></td><td>'+(w.tipoNomina||'')+'</td><td>'+ff(w.fechaIngreso)+'</td><td><span class="pill '+pc+'">'+est+'</span></td><td><button class="btn btn-outline bf" data-c="'+w.cedula+'" style="padding:3px 8px;font-size:11px;">Ver ficha</button></td></tr>';
+    html+='<tr><td>'+w.cedula+'</td><td><strong>'+(w.apellidos||'')+', '+(w.nombres||'')+'</strong></td><td>'+(w.cargo||'')+'</td><td>'+(w.gerencia||'')+'</td><td>'+(w.coordinacion||'')+'</td><td><span class="pill" style="'+sedePill+'">'+sede+'</span></td><td>'+(w.tipoNomina||'')+'</td><td>'+ff(w.fechaIngreso)+'</td><td><span class="pill '+pc+'">'+est+'</span></td><td><button class="btn btn-outline bf" data-c="'+w.cedula+'" style="padding:3px 8px;font-size:11px;">Ver ficha</button></td></tr>';
   });
   html += '</tbody></table></div></div>';
   v.innerHTML = html;
@@ -408,7 +397,7 @@ function renderDirectorio(){
   document.getElementById('s-nom').addEventListener('change',function(){ filtroNomina=this.value; renderDirectorio(); });
   document.getElementById('s-sede').addEventListener('change',function(){ filtroSede=this.value; renderDirectorio(); });
   document.getElementById('s-ger').addEventListener('change',function(){ filtroGerencia=this.value; filtroCoord=''; renderDirectorio(); });
-  document.getElementById('s-coord').addEventListener('change',function(){ filtroCoord=this.value; filtroGerencia=''; renderDirectorio(); });
+  document.getElementById('s-coord').addEventListener('change',function(){ filtroCoord=this.value; renderDirectorio(); });
   document.getElementById('btn-exp').addEventListener('click', exportarExcel);
   document.querySelectorAll('.bf').forEach(function(b){ b.addEventListener('click',function(){ verFicha(this.dataset.c); }); });
 }
@@ -582,20 +571,17 @@ function renderMovimientos(){
       var movs=[];
       snap.forEach(function(ch){movs.unshift(ch.val());});
 
-      // Conteo por tipo
       var tipoCount={};
       movs.forEach(function(m){ var t=m.tipo||'Otro'; tipoCount[t]=(tipoCount[t]||0)+1; });
       var tipoKeys=Object.keys(tipoCount).sort();
 
       var html='<div class="card"><h2>Historial de movimientos</h2>';
-      // Panel de conteo
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;">';
       html+='<div class="kpi" style="background:var(--azulbg);"><div class="l">Total movimientos</div><div class="v" style="color:var(--azul);">'+movs.length+'</div></div>';
       tipoKeys.forEach(function(t){
         html+='<div class="kpi" style="background:var(--grisbg);"><div class="l">'+t+'</div><div class="v" style="color:var(--gris);font-size:22px;">'+tipoCount[t]+'</div></div>';
       });
       html+='</div>';
-      // Filtro por tipo
       html+='<div class="searchbar" style="margin-bottom:10px;"><select id="mov-filtro-tipo" style="min-width:220px;"><option value="">Todos los tipos de movimiento</option>';
       tipoKeys.forEach(function(t){ html+='<option value="'+t+'">'+t+' ('+tipoCount[t]+')</option>'; });
       html+='</select></div>';
@@ -657,7 +643,7 @@ function renderFicha(){
     +'<div class="ficha-info">'
     +'<h3>'+(w.apellidos||'')+', '+(w.nombres||'')+'</h3>'
     +'<p>C.I: '+w.cedula+' · '+(w.cargo||'')+' · <span class="pill '+pc+'">'+est+'</span></p>'
-    +'<p class="muted">'+(w.gerencia||'')+(w.tipoNomina?' · '+w.tipoNomina:'')+'</p>'
+    +'<p class="muted">'+(w.gerencia||'')+(w.coordinacion?' · '+w.coordinacion:'')+(w.tipoNomina?' · '+w.tipoNomina:'')+'</p>'
     +'<p><span class="pill" style="'+(getSede(w)==='Mina Isidora'?'background:#E2EFDA;color:#375623;':'background:#DDEBF7;color:#185FA5;')+'">'+getSede(w)+'</span></p>'
     +'</div>'
     +'<div class="ficha-acciones">'+acc+'</div>'
@@ -690,7 +676,6 @@ function renderFicha(){
 
   document.getElementById('view-ficha').innerHTML = html;
 
-  // Botón editar — listener directo, sin inline onclick
   var btnEdit = document.getElementById('btn-editar-ficha');
   if(btnEdit){
     btnEdit.addEventListener('click', function(){
@@ -698,12 +683,10 @@ function renderFicha(){
     });
   }
 
-  // Botones movimiento modal
   document.querySelectorAll('.bm').forEach(function(b){
     b.addEventListener('click', function(){ abrirModal(fichaActual, this.dataset.t); });
   });
 
-  // Foto
   if(ROLE==='CHOCO'){
     var fotoInput = document.getElementById('foto-input-ficha');
     if(fotoInput){
@@ -926,6 +909,7 @@ function exportarExcel(){
 
 // ── UTILIDADES ────────────────────────────────────────────
 function ff(f){if(!f)return'';try{var p=f.split('-');return p[2]+'/'+p[1]+'/'+p[0];}catch(e){return f;}}
+
 </script>
 </body>
 </html>
