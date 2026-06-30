@@ -6,7 +6,7 @@
 <title>Control de Personal - Planta Chocó CVM</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="firebase-config.js?v=25"></script>
+<script src="firebase-config.js?v=26"></script>
 <style>
 :root{--azul:#185FA5;--azulbg:#E6F1FB;--verde:#27500A;--verdebg:#EAF3DE;--rojo:#A32D2D;--rojobg:#FCEBEB;--ambar:#854F0B;--ambarbg:#FAEEDA;--gris:#5F5E5A;--grisbg:#F1EFE8;--borde:#D3D1C7;--texto:#2C2C2A;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -184,12 +184,35 @@ tr:hover td{background:#fafafa;}
   </div>
 </div>
 
+<!-- MODAL EDITAR MOVIMIENTO -->
+<div id="modal-editmov" class="modal-overlay">
+  <div class="modal">
+    <h3 id="em-titulo">Editar movimiento</h3>
+    <input type="hidden" id="em-key">
+    <div class="form-group" style="margin-bottom:10px;">
+      <label>Fecha</label>
+      <input type="date" id="em-fecha">
+    </div>
+    <div class="form-group" style="margin-bottom:10px;">
+      <label>Detalle / Descripción</label>
+      <textarea id="em-detalle"></textarea>
+    </div>
+    <div id="em-msg" style="font-size:12px;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="btn-cancelar-editmov">Cancelar</button>
+      <button class="btn btn-prim" id="btn-guardar-editmov">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ── CREDENCIALES ──────────────────────────────────────────
 var USUARIOS = {
-  'rrhh.choco':   { clave: 'choco2026',   rol: 'CHOCO',   nombre: 'RRHH Chocó' },
-  'rrhh.caracas': { clave: 'caracas2026', rol: 'CARACAS', nombre: 'RRHH Caracas' }
+  'mariateresa.g':   { clave: 'S_MARIATERESA34', rol: 'CHOCO',   nombre: 'María Teresa G.' },
+  'maryorissarai.c': { clave: 'C_MARYORIS25',    rol: 'CHOCO',   nombre: 'Maryoris Saraí C.' },
+  'ruthsarais.m':    { clave: 'S_RUTH37',        rol: 'CHOCO',   nombre: 'Ruth Saraís M.' },
+  'rrhh.caracas':    { clave: 'caracas2026',       rol: 'CARACAS', nombre: 'RRHH Caracas' }
 };
 
 // ── ESTADO ────────────────────────────────────────────────
@@ -569,7 +592,7 @@ function renderMovimientos(){
   function cargarHistorialMovimientos(){
     window.db.ref('movimientos').orderByChild('timestamp').limitToLast(500).get().then(function(snap){
       var movs=[];
-      snap.forEach(function(ch){movs.unshift(ch.val());});
+      snap.forEach(function(ch){ var m=ch.val(); m._key=ch.key; movs.unshift(m); });
 
       var tipoCount={};
       movs.forEach(function(m){ var t=m.tipo||'Otro'; tipoCount[t]=(tipoCount[t]||0)+1; });
@@ -585,23 +608,75 @@ function renderMovimientos(){
       html+='<div class="searchbar" style="margin-bottom:10px;"><select id="mov-filtro-tipo" style="min-width:220px;"><option value="">Todos los tipos de movimiento</option>';
       tipoKeys.forEach(function(t){ html+='<option value="'+t+'">'+t+' ('+tipoCount[t]+')</option>'; });
       html+='</select></div>';
-      html+='<div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Cédula</th><th>Trabajador</th><th>Tipo</th><th>Detalle</th><th>Registrado por</th></tr></thead><tbody id="mov-tbody">';
+      var thAcc = (ROLE==='CHOCO') ? '<th>Acciones</th>' : '';
+      html+='<div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Cédula</th><th>Trabajador</th><th>Tipo</th><th>Detalle</th><th>Registrado por</th>'+thAcc+'</tr></thead><tbody id="mov-tbody">';
       html+='</tbody></table></div></div>';
       document.getElementById('hist-container').innerHTML=html;
 
+      // Guardar para que las acciones puedan re-renderizar
+      window._MOVS_HIST = movs;
+
       function pintarFilas(filtroTipo){
         var tb=document.getElementById('mov-tbody');
+        if(!tb) return;
         var f=movs.filter(function(m){ return !filtroTipo || (m.tipo||'Otro')===filtroTipo; });
+        var colspan = (ROLE==='CHOCO') ? 7 : 6;
         var rows='';
-        if(!f.length) rows='<tr><td colspan="6" class="muted" style="text-align:center;padding:20px;">Sin movimientos.</td></tr>';
+        if(!f.length) rows='<tr><td colspan="'+colspan+'" class="muted" style="text-align:center;padding:20px;">Sin movimientos.</td></tr>';
         f.forEach(function(m){
           var pc=m.tipo==='Ingreso'?'p-ingreso':m.tipo==='Egreso'?'p-egreso':m.tipo==='Suspension'?'p-suspendido':m.tipo==='Reincorporacion'?'p-activo':'p-contrato';
-          rows+='<tr><td>'+ff(m.fecha)+'</td><td>'+(m.cedula||'')+'</td><td>'+(m.nombre||'')+'</td><td><span class="pill '+pc+'">'+(m.tipo||'')+'</span></td><td>'+(m.detalle||'')+'</td><td class="muted">'+(m.registradoPor||'')+'</td></tr>';
+          var acc='';
+          if(ROLE==='CHOCO'){
+            acc='<td style="white-space:nowrap;">'
+              +'<button class="btn btn-outline mov-edit" data-k="'+m._key+'" style="padding:3px 8px;font-size:11px;">✏️</button> '
+              +'<button class="btn btn-rojo mov-del" data-k="'+m._key+'" style="padding:3px 8px;font-size:11px;">🗑</button>'
+              +'</td>';
+          }
+          rows+='<tr><td>'+ff(m.fecha)+'</td><td>'+(m.cedula||'')+'</td><td>'+(m.nombre||'')+'</td><td><span class="pill '+pc+'">'+(m.tipo||'')+'</span></td><td>'+(m.detalle||'')+'</td><td class="muted">'+(m.registradoPor||'')+'</td>'+acc+'</tr>';
         });
         tb.innerHTML=rows;
+        // Listeners de acciones
+        if(ROLE==='CHOCO'){
+          document.querySelectorAll('.mov-edit').forEach(function(b){
+            b.addEventListener('click', function(){ abrirEditarMov(this.dataset.k); });
+          });
+          document.querySelectorAll('.mov-del').forEach(function(b){
+            b.addEventListener('click', function(){ eliminarMov(this.dataset.k); });
+          });
+        }
       }
       pintarFilas('');
-      document.getElementById('mov-filtro-tipo').addEventListener('change', function(){ pintarFilas(this.value); });
+      var fil=document.getElementById('mov-filtro-tipo');
+      if(fil) fil.addEventListener('change', function(){ pintarFilas(this.value); });
+
+      // ── Editar movimiento ──
+      function abrirEditarMov(key){
+        var m = movs.find(function(x){ return x._key===key; });
+        if(!m){ alert('Movimiento no encontrado.'); return; }
+        var ov=document.getElementById('modal-editmov');
+        document.getElementById('em-titulo').textContent='Editar movimiento — '+(m.nombre||m.cedula||'');
+        document.getElementById('em-fecha').value=m.fecha||'';
+        document.getElementById('em-detalle').value=m.detalle||'';
+        document.getElementById('em-key').value=key;
+        document.getElementById('em-msg').textContent='';
+        ov.style.display='flex';
+      }
+
+      // ── Eliminar movimiento ──
+      function eliminarMov(key){
+        var m = movs.find(function(x){ return x._key===key; });
+        if(!m){ alert('Movimiento no encontrado.'); return; }
+        var txt='¿Eliminar este movimiento?\n\n'
+          +'Trabajador: '+(m.nombre||'')+'\n'
+          +'Tipo: '+(m.tipo||'')+'\n'
+          +'Fecha: '+ff(m.fecha)+'\n'
+          +'Detalle: '+(m.detalle||'')+'\n\n'
+          +'Esta acción no se puede deshacer.';
+        if(!confirm(txt)) return;
+        window.db.ref('movimientos/'+key).remove().then(function(){
+          cargarHistorialMovimientos();
+        }).catch(function(e){ alert('Error al eliminar: '+e.message); });
+      }
     });
   }
 }
@@ -751,15 +826,47 @@ function cargarHist(ced){
     var el=document.getElementById('hist-mov');
     if(!el) return;
     var movs=[];
-    snap.forEach(function(ch){movs.push(ch.val());});
+    snap.forEach(function(ch){ var m=ch.val(); m._key=ch.key; movs.push(m); });
     movs.sort(function(a,b){return(b.timestamp||0)-(a.timestamp||0);});
     if(!movs.length){el.innerHTML='<div class="muted">Sin movimientos.</div>';return;}
     var html='';
     movs.forEach(function(m){
       var pc=m.tipo==='Ingreso'?'p-ingreso':m.tipo==='Egreso'?'p-egreso':m.tipo==='Suspension'?'p-suspendido':m.tipo==='Reincorporacion'?'p-activo':'p-contrato';
-      html+='<div class="mov-item"><span class="mov-date">'+ff(m.fecha)+'</span><div class="mov-content"><span class="pill '+pc+'">'+m.tipo+'</span><div>'+(m.detalle||'')+'</div><div class="muted">'+(m.registradoPor||'')+'</div></div></div>';
+      var acc='';
+      if(ROLE==='CHOCO'){
+        acc='<div style="margin-top:4px;">'
+          +'<button class="btn btn-outline fmov-edit" data-k="'+m._key+'" style="padding:2px 7px;font-size:11px;">✏️ Editar</button> '
+          +'<button class="btn btn-rojo fmov-del" data-k="'+m._key+'" data-info="'+((m.tipo||'')+' · '+ff(m.fecha)).replace(/"/g,'&quot;')+'" style="padding:2px 7px;font-size:11px;">🗑 Eliminar</button>'
+          +'</div>';
+      }
+      html+='<div class="mov-item"><span class="mov-date">'+ff(m.fecha)+'</span><div class="mov-content"><span class="pill '+pc+'">'+m.tipo+'</span><div>'+(m.detalle||'')+'</div><div class="muted">'+(m.registradoPor||'')+(m.editadoPor?' · editado por '+m.editadoPor:'')+'</div>'+acc+'</div></div>';
     });
     el.innerHTML=html;
+
+    if(ROLE==='CHOCO'){
+      el.querySelectorAll('.fmov-edit').forEach(function(b){
+        b.addEventListener('click', function(){
+          var key=this.dataset.k;
+          var m=movs.find(function(x){return x._key===key;});
+          if(!m){ alert('Movimiento no encontrado.'); return; }
+          document.getElementById('em-titulo').textContent='Editar movimiento — '+(m.nombre||m.cedula||'');
+          document.getElementById('em-fecha').value=m.fecha||'';
+          document.getElementById('em-detalle').value=m.detalle||'';
+          document.getElementById('em-key').value=key;
+          document.getElementById('em-msg').textContent='';
+          document.getElementById('modal-editmov').style.display='flex';
+        });
+      });
+      el.querySelectorAll('.fmov-del').forEach(function(b){
+        b.addEventListener('click', function(){
+          var key=this.dataset.k;
+          if(!confirm('¿Eliminar este movimiento?\n\n'+this.dataset.info+'\n\nEsta acción no se puede deshacer.')) return;
+          window.db.ref('movimientos/'+key).remove().then(function(){
+            cargarHist(ced);
+          }).catch(function(e){ alert('Error al eliminar: '+e.message); });
+        });
+      });
+    }
   });
 }
 
@@ -893,6 +1000,26 @@ document.getElementById('btn-guardar-mov').addEventListener('click', function(){
   window.db.ref().update(upd).then(function(){
     document.getElementById('modal-mov').style.display='none'; MOV_TRABAJADOR=null; renderFicha();
   }).catch(function(e){ alert('Error: '+e.message); });
+});
+
+// ── MODAL EDITAR MOVIMIENTO ───────────────────────────────
+document.getElementById('btn-cancelar-editmov').addEventListener('click', function(){
+  document.getElementById('modal-editmov').style.display='none';
+});
+document.getElementById('btn-guardar-editmov').addEventListener('click', function(){
+  var key=document.getElementById('em-key').value;
+  var fecha=document.getElementById('em-fecha').value;
+  var detalle=document.getElementById('em-detalle').value.trim();
+  var msg=document.getElementById('em-msg');
+  if(!key){ msg.innerHTML='<span class="danger">Error: sin referencia.</span>'; return; }
+  if(!fecha){ msg.innerHTML='<span class="danger">Selecciona la fecha.</span>'; return; }
+  msg.textContent='Guardando...';
+  var upd={ fecha:fecha, detalle:detalle, editadoPor:USUARIO_NOMBRE, editadoTimestamp:Date.now() };
+  window.db.ref('movimientos/'+key).update(upd).then(function(){
+    document.getElementById('modal-editmov').style.display='none';
+    if(TAB==='movimientos') renderMovimientos();
+    if(TAB==='ficha') renderFicha();
+  }).catch(function(e){ msg.innerHTML='<span class="danger">Error: '+e.message+'</span>'; });
 });
 
 // ── EXPORTAR ──────────────────────────────────────────────
