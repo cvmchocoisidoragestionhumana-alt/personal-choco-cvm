@@ -139,6 +139,7 @@ tr:hover td{background:#fafafa;}
       <div class="kpi k-contrato"><div class="l">Contratos culminados</div><div class="v" id="kpi-contrato">0</div></div>
       <div class="kpi" style="background:#F3E8FF;"><div class="l">De vacaciones</div><div class="v" id="kpi-vacaciones" style="color:#6B2FA0;">0</div></div>
     </div>
+    <div id="aviso-reincorp"></div>
     <div class="tabs">
       <button class="active" data-tab="directorio">Directorio</button>
       <button data-tab="ingreso" id="tab-ingreso">Nuevo ingreso</button>
@@ -270,6 +271,7 @@ function iniciarDatos(){
     PERSONAL = snap.val() || {};
     setSync('sincronizado');
     actualizarKPIs();
+    renderAvisoReincorporacion();
     renderTab();
   });
 }
@@ -294,6 +296,52 @@ function actualizarKPIs(){
   document.getElementById('kpi-suspendido').textContent = suspendidos;
   document.getElementById('kpi-contrato').textContent = contratos;
   var kvac=document.getElementById('kpi-vacaciones'); if(kvac) kvac.textContent=vacaciones;
+}
+
+// ── AVISO DE REINCORPORACIÓN (vacaciones vencidas) ──────────
+function renderAvisoReincorporacion(){
+  var cont = document.getElementById('aviso-reincorp');
+  if(!cont) return;
+  if(ROLE!=='CHOCO'){ cont.innerHTML=''; return; }
+  var hoy = new Date().toISOString().slice(0,10);
+  var vencidos = Object.values(PERSONAL).filter(function(w){
+    return (w.estado==='Vacaciones') && w.vacacionesFin && (w.vacacionesFin < hoy);
+  });
+  if(!vencidos.length){ cont.innerHTML=''; return; }
+  var html='<div class="card" style="border-left:4px solid var(--ambar);background:var(--ambarbg);margin-bottom:12px;">'
+    +'<div style="font-weight:bold;color:var(--ambar);margin-bottom:8px;">⚠ Reincorporaciones pendientes ('+vencidos.length+')</div>'
+    +'<div class="muted" style="margin-bottom:10px;">Estos trabajadores tienen vacaciones vencidas y siguen marcados como "Vacaciones". Confirma su reincorporación si ya volvieron.</div>'
+    +'<div class="tablewrap"><table><thead><tr><th>Cédula</th><th>Trabajador</th><th>Cargo</th><th>Fin vacaciones</th><th>Acción</th></tr></thead><tbody>';
+  vencidos.forEach(function(w){
+    html+='<tr><td>'+w.cedula+'</td><td><strong>'+(w.apellidos||'')+', '+(w.nombres||'')+'</strong></td><td>'+(w.cargo||'')+'</td><td>'+ff(w.vacacionesFin)+'</td>'
+      +'<td><button class="btn btn-verde btn-reincorp" data-c="'+w.cedula+'" style="padding:3px 10px;font-size:11px;">Reincorporar</button></td></tr>';
+  });
+  html+='</tbody></table></div></div>';
+  cont.innerHTML=html;
+  document.querySelectorAll('.btn-reincorp').forEach(function(b){
+    b.addEventListener('click', function(){ reincorporarTrabajador(this.dataset.c); });
+  });
+}
+
+function reincorporarTrabajador(ced){
+  var w = PERSONAL[ced];
+  if(!w){ alert('Trabajador no encontrado.'); return; }
+  var fechaReal = prompt('Fecha real de reincorporación de '+w.nombres+' '+w.apellidos+' (YYYY-MM-DD):', new Date().toISOString().slice(0,10));
+  if(fechaReal===null) return;
+  fechaReal = fechaReal.trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fechaReal)){ alert('Formato de fecha inválido. Usa YYYY-MM-DD.'); return; }
+  var mk = window.db.ref('movimientos').push().key;
+  var upd = {};
+  upd['movimientos/'+mk] = {
+    cedula:ced, nombre:w.nombres+' '+w.apellidos, tipo:'Reincorporacion', fecha:fechaReal,
+    detalle:'Reincorporación tras vacaciones (fin planificado '+ff(w.vacacionesFin)+')',
+    registradoPor:USUARIO_NOMBRE, timestamp:Date.now()
+  };
+  upd['personal/'+ced+'/estado']='Activo';
+  upd['personal/'+ced+'/ultimoMovFecha']=fechaReal;
+  window.db.ref().update(upd).then(function(){
+    alert('✓ '+w.nombres+' '+w.apellidos+' reincorporado(a). Estado: Activo.');
+  }).catch(function(e){ alert('Error: '+e.message); });
 }
 
 // ── TABS ──────────────────────────────────────────────────
@@ -636,7 +684,7 @@ function renderMovimientos(){
       movs.forEach(function(m){ var t=m.tipo||'Otro'; tipoCount[t]=(tipoCount[t]||0)+1; });
       var tipoKeys=Object.keys(tipoCount).sort();
 
-      var html='<div class="card"><h2>Historial de movimientos</h2>';
+      var html='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><h2>Historial de movimientos</h2><button class="btn btn-prim" id="btn-exp-mov">Exportar Excel</button></div>';
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;">';
       html+='<div class="kpi" style="background:var(--azulbg);"><div class="l">Total movimientos</div><div class="v" style="color:var(--azul);">'+movs.length+'</div></div>';
       tipoKeys.forEach(function(t){
@@ -653,6 +701,9 @@ function renderMovimientos(){
 
       // Guardar para que las acciones puedan re-renderizar
       window._MOVS_HIST = movs;
+
+      var btnExpMov = document.getElementById('btn-exp-mov');
+      if(btnExpMov) btnExpMov.addEventListener('click', exportarMovimientos);
 
       function pintarFilas(filtroTipo){
         var tb=document.getElementById('mov-tbody');
@@ -1131,13 +1182,32 @@ document.getElementById('btn-guardar-editmov').addEventListener('click', functio
 // ── EXPORTAR ──────────────────────────────────────────────
 function exportarExcel(){
   if(typeof XLSX==='undefined'){alert('Librería no disponible.');return;}
-  var rows=[['Cédula','Nombres','Apellidos','Sexo','Nacionalidad','F.Nacimiento','Estado civil','Tipo sangre','Profesión','Estado geo','Municipio','Dirección','Teléfono','Correo','Cuenta bancaria','CV Nombre','CV Estado','CV Municipio','Cargo','Gerencia','Coordinación','Ubicación','F.Ingreso','Tipo nómina','Tipo contrato','Camisa','Pantalón','Braga','Zapato','Zurdo','Estado laboral']];
+  var rows=[['Cédula','Nombres','Apellidos','Sexo','Nacionalidad','F.Nacimiento','Estado civil','Tipo sangre','Profesión','Estado geo','Municipio','Dirección','Teléfono','Correo','Cuenta bancaria','CV Nombre','CV Estado','CV Municipio','Cargo','Gerencia','Coordinación','Ubicación','F.Ingreso','Tipo nómina','Tipo contrato','Tipo vinculación','Inicio vinculación','Fin vinculación','Camisa','Pantalón','Braga','Zapato','Zurdo','Estado laboral']];
   Object.values(PERSONAL).forEach(function(w){
-    rows.push([w.cedula,w.nombres,w.apellidos,w.sexo,w.nacionalidad,w.fechaNacimiento,w.estadoCivil,w.tipoSangre,w.profesion,w.estado_geo,w.municipio_geo,w.direccion,w.telefono,w.correo,w.cuentaBancaria,w.cvNombre,w.cvEstado,w.cvMunicipio,w.cargo,w.gerencia,w.coordinacion,w.ubicacion,w.fechaIngreso,w.tipoNomina,w.tipoContrato,w.tallaCamisa,w.tallaPantalon,w.tallaBraga,w.tallaZapato,w.zurdo,w.estado||'Activo']);
+    rows.push([w.cedula,w.nombres,w.apellidos,w.sexo,w.nacionalidad,w.fechaNacimiento,w.estadoCivil,w.tipoSangre,w.profesion,w.estado_geo,w.municipio_geo,w.direccion,w.telefono,w.correo,w.cuentaBancaria,w.cvNombre,w.cvEstado,w.cvMunicipio,w.cargo,w.gerencia,w.coordinacion,w.ubicacion,w.fechaIngreso,w.tipoNomina,w.tipoContrato,w.tipoVinculacion||'Fijo',w.vinculacionInicio||'',w.vinculacionFin||'',w.tallaCamisa,w.tallaPantalon,w.tallaBraga,w.tallaZapato,w.zurdo,w.estado||'Activo']);
   });
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Personal');
   XLSX.writeFile(wb,'Personal_Choco_'+today+'.xlsx');
+}
+
+function exportarMovimientos(){
+  if(typeof XLSX==='undefined'){alert('Librería no disponible.');return;}
+  var movs = window._MOVS_HIST || [];
+  if(!movs.length){alert('No hay movimientos cargados para exportar.');return;}
+  var rows=[['Fecha','Cédula','Trabajador','Tipo de movimiento','Detalle','Estado aprobación','Valor anterior','Valor propuesto','Punto de cuenta','Aprobado/Rechazado por','Fecha aprob./rech.','Motivo rechazo','Registrado por']];
+  movs.forEach(function(m){
+    rows.push([
+      ff(m.fecha), m.cedula||'', m.nombre||'', m.tipo||'', m.detalle||'',
+      m.estadoAprobacion||'', m.valorAnterior||'', m.valorPropuesto||'',
+      m.puntoCuenta||'', m.aprobadoPor||m.rechazadoPor||'',
+      (m.fechaAprobacion?ff(m.fechaAprobacion):(m.fechaRechazo?ff(m.fechaRechazo):'')),
+      m.motivoRechazo||'', m.registradoPor||''
+    ]);
+  });
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Movimientos');
+  XLSX.writeFile(wb,'Movimientos_Choco_'+today+'.xlsx');
 }
 
 // ── UTILIDADES ────────────────────────────────────────────
