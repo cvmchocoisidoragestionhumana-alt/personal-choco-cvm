@@ -53,6 +53,11 @@ tr:hover td{background:#fafafa;}
 .p-suspendido{background:var(--ambarbg);color:var(--ambar);}
 .p-contrato{background:var(--grisbg);color:var(--gris);}
 .p-ingreso{background:var(--azulbg);color:var(--azul);}
+.p-pendiente{background:var(--ambarbg);color:var(--ambar);}
+.p-aprobado{background:var(--verdebg);color:var(--verde);}
+.p-rechazado{background:var(--rojobg);color:var(--rojo);}
+.p-hp{background:#F3E8FF;color:#6B21A8;}
+.p-prueba{background:#FFF4D6;color:#8A6100;}
 .p-vacaciones{background:#F3E8FF;color:#6B2FA0;}
 .form-section{font-size:11px;font-weight:bold;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--azulbg);}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
@@ -209,9 +214,9 @@ tr:hover td{background:#fafafa;}
 <script>
 // ── CREDENCIALES ──────────────────────────────────────────
 var USUARIOS = {
-  'mariateresa.g':   { clave: 'S_MARIATERESA34', rol: 'CHOCO',   nombre: 'María Teresa G.' },
-  'maryorissarai.c': { clave: 'C_MARYORIS25',    rol: 'CHOCO',   nombre: 'Maryoris Saraí C.' },
-  'ruthsarais.m':    { clave: 'S_RUTH37',        rol: 'CHOCO',   nombre: 'Ruth Saraís M.' },
+  'mariateresa.g':   { clave: 'CLAVE_MARIATERESA', rol: 'CHOCO',   nombre: 'María Teresa G.' },
+  'maryorissarai.c': { clave: 'CLAVE_MARYORIS',    rol: 'CHOCO',   nombre: 'Maryoris Saraí C.' },
+  'ruthsarais.m':    { clave: 'CLAVE_RUTH',        rol: 'CHOCO',   nombre: 'Ruth Saraís M.' },
   'rrhh.caracas':    { clave: 'caracas2026',       rol: 'CARACAS', nombre: 'RRHH Caracas' }
 };
 
@@ -467,7 +472,9 @@ function renderIngreso(){
     +'<div class="form-group"><label>F. Ingreso *</label><input type="date" id="f-fing"></div>'
     +'<div class="form-group"><label>Tipo nómina</label><select id="f-nomina"><option value="">Seleccionar</option><option>Operativos</option><option>Contratados</option><option>Empleados</option><option value="Direccion Y Confianza">Dirección y Confianza</option></select></div>'
     +'<div class="form-group"><label>Tipo contrato</label><select id="f-contrato"><option value="">Seleccionar</option><option>Fijo</option><option>Contratado</option><option>Obra determinada</option></select></div>'
+    +'<div class="form-group"><label>Tipo de vinculación *</label><select id="f-vinculacion"><option value="Fijo">Fijo</option><option value="Honorarios Profesionales">Honorarios Profesionales (HP)</option><option value="Periodo de prueba">Periodo de prueba</option></select></div>'
     +'</div>'
+    +'<div id="f-vinc-fields" style="display:none;"><div class="form-grid"><div class="form-group"><label>Fecha de inicio *</label><input type="date" id="f-vinc-inicio"></div><div class="form-group"><label>Fecha de culminación *</label><input type="date" id="f-vinc-fin"></div></div></div>'
     +'<div class="form-section">Tallas</div>'
     +'<div class="form-grid-3">'
     +'<div class="form-group"><label>Camisa</label><select id="f-camisa"><option value="">-</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>XXXL</option></select></div>'
@@ -484,6 +491,10 @@ function renderIngreso(){
     +'</div>';
   document.getElementById('btn-reg').addEventListener('click', guardarIngreso);
   document.getElementById('btn-limp').addEventListener('click', function(){ renderIngreso(); });
+  document.getElementById('f-vinculacion').addEventListener('change', function(){
+    var vf = document.getElementById('f-vinc-fields');
+    if(vf) vf.style.display = (this.value==='Fijo') ? 'none' : 'block';
+  });
 }
 
 function guardarIngreso(){
@@ -491,15 +502,18 @@ function guardarIngreso(){
   var ced=g('f-cedula').trim().replace(/[^0-9]/g,'');
   var nom=g('f-nombres').trim(), ape=g('f-apellidos').trim();
   var cargo=g('f-cargo').trim(), ger=g('f-gerencia').trim(), fing=g('f-fing');
+  var vinc=g('f-vinculacion')||'Fijo', vincIni=g('f-vinc-inicio'), vincFin=g('f-vinc-fin');
   var msg=document.getElementById('ing-msg');
   if(!ced||!nom||!ape||!cargo||!ger||!fing){msg.innerHTML='<span class="danger">Completa los campos obligatorios (*)</span>';return;}
+  if((vinc==='Honorarios Profesionales'||vinc==='Periodo de prueba')&&(!vincIni||!vincFin)){msg.innerHTML='<span class="danger">Indica la fecha de inicio y de culminación de la vinculación.</span>';return;}
   if(PERSONAL[ced]){msg.innerHTML='<span class="danger">Ya existe un trabajador con esa cédula.</span>';return;}
   msg.textContent='Guardando...';
-  var datos={cedula:ced,nombres:nom,apellidos:ape,sexo:g('f-sexo'),nacionalidad:g('f-nac'),fechaNacimiento:g('f-fnac'),lugarNacimiento:g('f-lugar'),estadoCivil:g('f-ecivil'),tipoSangre:g('f-sangre'),profesion:g('f-prof'),estado_geo:g('f-est-geo'),municipio_geo:g('f-mun-geo'),direccion:g('f-dir'),telefono:g('f-tel'),correo:g('f-correo'),cuentaBancaria:g('f-cuenta'),cvNombre:g('f-cv-nom'),cvEstado:g('f-cv-est'),cvMunicipio:g('f-cv-mun'),cargo:cargo,gerencia:ger,coordinacion:g('f-coordinacion'),ubicacion:g('f-ubic'),fechaIngreso:fing,tipoNomina:g('f-nomina'),tipoContrato:g('f-contrato'),tallaCamisa:g('f-camisa'),tallaPantalon:g('f-pantalon'),tallaBraga:g('f-braga'),tallaZapato:g('f-zapato'),zurdo:g('f-zurdo'),estado:'Activo',fechaRegistro:today,registradoPor:USUARIO_NOMBRE};
+  var datos={cedula:ced,nombres:nom,apellidos:ape,sexo:g('f-sexo'),nacionalidad:g('f-nac'),fechaNacimiento:g('f-fnac'),lugarNacimiento:g('f-lugar'),estadoCivil:g('f-ecivil'),tipoSangre:g('f-sangre'),profesion:g('f-prof'),estado_geo:g('f-est-geo'),municipio_geo:g('f-mun-geo'),direccion:g('f-dir'),telefono:g('f-tel'),correo:g('f-correo'),cuentaBancaria:g('f-cuenta'),cvNombre:g('f-cv-nom'),cvEstado:g('f-cv-est'),cvMunicipio:g('f-cv-mun'),cargo:cargo,gerencia:ger,coordinacion:g('f-coordinacion'),ubicacion:g('f-ubic'),fechaIngreso:fing,tipoNomina:g('f-nomina'),tipoContrato:g('f-contrato'),tipoVinculacion:vinc,vinculacionInicio:vincIni,vinculacionFin:vincFin,tallaCamisa:g('f-camisa'),tallaPantalon:g('f-pantalon'),tallaBraga:g('f-braga'),tallaZapato:g('f-zapato'),zurdo:g('f-zurdo'),estado:'Activo',fechaRegistro:today,registradoPor:USUARIO_NOMBRE};
   var mk=window.db.ref('movimientos').push().key;
   var upd={};
   upd['personal/'+ced]=datos;
-  upd['movimientos/'+mk]={cedula:ced,nombre:nom+' '+ape,tipo:'Ingreso',fecha:fing,detalle:'Ingreso como '+cargo+' en '+ger,registradoPor:USUARIO_NOMBRE,timestamp:Date.now()};
+  var detIng='Ingreso como '+cargo+' en '+ger+(vinc!=='Fijo'?' ('+vinc+': '+vincIni+' a '+vincFin+')':'');
+  upd['movimientos/'+mk]={cedula:ced,nombre:nom+' '+ape,tipo:'Ingreso',fecha:fing,detalle:detIng,registradoPor:USUARIO_NOMBRE,timestamp:Date.now()};
   window.db.ref().update(upd).then(function(){msg.innerHTML='<span style="color:var(--verde)">✓ Trabajador registrado.</span>';renderIngreso();}).catch(function(e){msg.innerHTML='<span class="danger">Error: '+e.message+'</span>';});
 }
 
@@ -559,6 +573,30 @@ function renderMovimientos(){
     var w = PERSONAL[ced];
     var mk = window.db.ref('movimientos').push().key;
     var upd = {};
+    var requiereAprob = (tipo==='Cambio de cargo' || tipo==='Cambio de unidad de adscripcion');
+
+    if(requiereAprob){
+      if(!nuevo){ msg.innerHTML='<span class="danger">Indica el nuevo '+(tipo==='Cambio de cargo'?'cargo':'unidad de adscripción')+'.</span>'; return; }
+      var campo = (tipo==='Cambio de cargo') ? 'cargo' : 'gerencia';
+      upd['movimientos/'+mk] = {
+        cedula:ced, nombre:w.nombres+' '+w.apellidos, tipo:tipo, fecha:fecha,
+        detalle:detalle+' → '+nuevo, registradoPor:USUARIO_NOMBRE, timestamp:Date.now(),
+        estadoAprobacion:'Pendiente', campoAfectado:campo,
+        valorAnterior:(w[campo]||''), valorPropuesto:nuevo
+      };
+      // NO se toca personal/ced/... hasta que Caracas apruebe
+      msg.textContent = 'Guardando...';
+      window.db.ref().update(upd).then(function(){
+        msg.innerHTML = '<span style="color:var(--ambar)">⏳ Movimiento registrado como PENDIENTE por aprobación de Caracas para '+w.apellidos+', '+w.nombres+'. El cambio se aplicará al aprobarlo.</span>';
+        document.getElementById('qm-cedula').value='';
+        document.getElementById('qm-detalle').value='';
+        document.getElementById('qm-nuevo').value='';
+        document.getElementById('qm-nombre-preview').innerHTML='';
+        cargarHistorialMovimientos();
+      }).catch(function(e){ msg.innerHTML='<span class="danger">Error: '+e.message+'</span>'; });
+      return;
+    }
+
     upd['movimientos/'+mk] = {cedula:ced,nombre:w.nombres+' '+w.apellidos,tipo:tipo,fecha:fecha,detalle:detalle+(nuevo?' → '+nuevo:''),registradoPor:USUARIO_NOMBRE,timestamp:Date.now()};
     upd['personal/'+ced+'/ultimoMovFecha'] = fecha;
     if(tipo==='Egreso') upd['personal/'+ced+'/estado']='Egresado';
@@ -625,14 +663,28 @@ function renderMovimientos(){
         if(!f.length) rows='<tr><td colspan="'+colspan+'" class="muted" style="text-align:center;padding:20px;">Sin movimientos.</td></tr>';
         f.forEach(function(m){
           var pc=m.tipo==='Ingreso'?'p-ingreso':m.tipo==='Egreso'?'p-egreso':m.tipo==='Suspension'?'p-suspendido':m.tipo==='Reincorporacion'?'p-activo':'p-contrato';
+          var estAprob='';
+          if(m.estadoAprobacion){
+            var ep=m.estadoAprobacion==='Pendiente'?'p-pendiente':m.estadoAprobacion==='Aprobado'?'p-aprobado':'p-rechazado';
+            var etxt=m.estadoAprobacion==='Pendiente'?'⏳ Pendiente Caracas':m.estadoAprobacion==='Aprobado'?'✓ Aprobado Caracas':'✕ Rechazado';
+            estAprob=' <span class="pill '+ep+'">'+etxt+'</span>';
+            if(m.estadoAprobacion==='Aprobado'&&m.puntoCuenta) estAprob+=' <span class="muted">PC: '+m.puntoCuenta+'</span>';
+          }
           var acc='';
           if(ROLE==='CHOCO'){
-            acc='<td style="white-space:nowrap;">'
-              +'<button class="btn btn-outline mov-edit" data-k="'+m._key+'" style="padding:3px 8px;font-size:11px;">✏️</button> '
-              +'<button class="btn btn-rojo mov-del" data-k="'+m._key+'" style="padding:3px 8px;font-size:11px;">🗑</button>'
-              +'</td>';
+            if(m.estadoAprobacion==='Pendiente'){
+              acc='<td style="white-space:nowrap;">'
+                +'<button class="btn btn-verde mov-aprob" data-k="'+m._key+'" style="padding:3px 8px;font-size:11px;">✓ Aprobar</button> '
+                +'<button class="btn btn-rojo mov-rech" data-k="'+m._key+'" style="padding:3px 8px;font-size:11px;">✕ Rechazar</button>'
+                +'</td>';
+            } else {
+              acc='<td style="white-space:nowrap;">'
+                +'<button class="btn btn-outline mov-edit" data-k="'+m._key+'" style="padding:3px 8px;font-size:11px;">✏️</button> '
+                +'<button class="btn btn-rojo mov-del" data-k="'+m._key+'" style="padding:3px 8px;font-size:11px;">🗑</button>'
+                +'</td>';
+            }
           }
-          rows+='<tr><td>'+ff(m.fecha)+'</td><td>'+(m.cedula||'')+'</td><td>'+(m.nombre||'')+'</td><td><span class="pill '+pc+'">'+(m.tipo||'')+'</span></td><td>'+(m.detalle||'')+'</td><td class="muted">'+(m.registradoPor||'')+'</td>'+acc+'</tr>';
+          rows+='<tr><td>'+ff(m.fecha)+'</td><td>'+(m.cedula||'')+'</td><td>'+(m.nombre||'')+'</td><td><span class="pill '+pc+'">'+(m.tipo||'')+'</span>'+estAprob+'</td><td>'+(m.detalle||'')+'</td><td class="muted">'+(m.registradoPor||'')+'</td>'+acc+'</tr>';
         });
         tb.innerHTML=rows;
         // Listeners de acciones
@@ -643,11 +695,65 @@ function renderMovimientos(){
           document.querySelectorAll('.mov-del').forEach(function(b){
             b.addEventListener('click', function(){ eliminarMov(this.dataset.k); });
           });
+          document.querySelectorAll('.mov-aprob').forEach(function(b){
+            b.addEventListener('click', function(){ aprobarMov(this.dataset.k); });
+          });
+          document.querySelectorAll('.mov-rech').forEach(function(b){
+            b.addEventListener('click', function(){ rechazarMov(this.dataset.k); });
+          });
         }
       }
       pintarFilas('');
       var fil=document.getElementById('mov-filtro-tipo');
       if(fil) fil.addEventListener('change', function(){ pintarFilas(this.value); });
+
+      // ── Aprobar movimiento (aplica el cambio al trabajador) ──
+      function aprobarMov(key){
+        var m = movs.find(function(x){ return x._key===key; });
+        if(!m){ alert('Movimiento no encontrado.'); return; }
+        if(m.estadoAprobacion!=='Pendiente'){ alert('Este movimiento ya fue procesado.'); return; }
+        var w = PERSONAL[m.cedula];
+        if(!w){ alert('El trabajador ya no existe en el sistema.'); return; }
+        var etiqueta = (m.campoAfectado==='cargo') ? 'cargo' : 'unidad de adscripción';
+        var confirmar = confirm('¿Confirmar que CARACAS APROBÓ este cambio?\n\n'
+          +'Trabajador: '+(m.nombre||'')+'\n'
+          +'Cambio de '+etiqueta+':\n'
+          +'   Anterior: '+(m.valorAnterior||'(vacío)')+'\n'
+          +'   Nuevo: '+(m.valorPropuesto||'')+'\n\n'
+          +'Al aceptar, el cambio se aplicará al trabajador.');
+        if(!confirmar) return;
+        var pc = prompt('N° de Punto de Cuenta (opcional, puedes dejarlo en blanco):','');
+        var upd = {};
+        upd['movimientos/'+key+'/estadoAprobacion']='Aprobado';
+        upd['movimientos/'+key+'/aprobadoPor']=USUARIO_NOMBRE;
+        upd['movimientos/'+key+'/fechaAprobacion']=today;
+        if(pc && pc.trim()) upd['movimientos/'+key+'/puntoCuenta']=pc.trim();
+        // Aplicar el cambio real al trabajador
+        upd['personal/'+m.cedula+'/'+m.campoAfectado]=m.valorPropuesto;
+        upd['personal/'+m.cedula+'/ultimoMovFecha']=m.fecha;
+        window.db.ref().update(upd).then(function(){
+          alert('✓ Cambio aprobado y aplicado al trabajador.');
+          location.reload();
+        }).catch(function(e){ alert('Error: '+e.message); });
+      }
+
+      // ── Rechazar movimiento (no toca los datos del trabajador) ──
+      function rechazarMov(key){
+        var m = movs.find(function(x){ return x._key===key; });
+        if(!m){ alert('Movimiento no encontrado.'); return; }
+        if(m.estadoAprobacion!=='Pendiente'){ alert('Este movimiento ya fue procesado.'); return; }
+        var motivo = prompt('Motivo del rechazo (opcional):','');
+        if(motivo===null) return; // canceló
+        var upd = {};
+        upd['movimientos/'+key+'/estadoAprobacion']='Rechazado';
+        upd['movimientos/'+key+'/rechazadoPor']=USUARIO_NOMBRE;
+        upd['movimientos/'+key+'/fechaRechazo']=today;
+        if(motivo && motivo.trim()) upd['movimientos/'+key+'/motivoRechazo']=motivo.trim();
+        window.db.ref().update(upd).then(function(){
+          alert('Movimiento marcado como Rechazado. Los datos del trabajador no se modificaron.');
+          cargarHistorialMovimientos();
+        }).catch(function(e){ alert('Error: '+e.message); });
+      }
 
       // ── Editar movimiento ──
       function abrirEditarMov(key){
@@ -740,7 +846,7 @@ function renderFicha(){
   html+='<div class="ficha-grid"><div><div class="block-title">Datos personales</div>';
   [['Sexo',w.sexo],['Nacionalidad',w.nacionalidad],['F. Nacimiento',ff(w.fechaNacimiento)],['Lugar nacimiento',w.lugarNacimiento],['Estado civil',w.estadoCivil],['Tipo de sangre',w.tipoSangre],['Profesión',w.profesion],['Estado (res.)',w.estado_geo],['Municipio',w.municipio_geo],['Dirección',w.direccion],['Teléfono',w.telefono],['Correo',w.correo],['Cuenta bancaria',w.cuentaBancaria]].forEach(function(r){html+=fr(r[0],r[1]);});
   html+='</div><div><div class="block-title">Datos laborales</div>';
-  [['Cargo',w.cargo],['Gerencia',w.gerencia],['Coordinación',w.coordinacion],['Ubicación',w.ubicacion],['F. Ingreso',ff(w.fechaIngreso)],['Tipo nómina',w.tipoNomina],['Tipo contrato',w.tipoContrato]].forEach(function(r){html+=fr(r[0],r[1]);});
+  [['Cargo',w.cargo],['Gerencia',w.gerencia],['Coordinación',w.coordinacion],['Ubicación',w.ubicacion],['F. Ingreso',ff(w.fechaIngreso)],['Tipo nómina',w.tipoNomina],['Tipo contrato',w.tipoContrato],['Tipo vinculación',w.tipoVinculacion||'Fijo'],['Inicio vinculación',w.vinculacionInicio?ff(w.vinculacionInicio):''],['Fin vinculación',w.vinculacionFin?ff(w.vinculacionFin):'']].forEach(function(r){html+=fr(r[0],r[1]);});
   html+='<div class="block-title" style="margin-top:12px;">Tallas</div>';
   [['Camisa',w.tallaCamisa],['Pantalón',w.tallaPantalon],['Braga',w.tallaBraga],['Zapato',w.tallaZapato],['Zurdo',w.zurdo]].forEach(function(r){html+=fr(r[0],r[1]);});
   html+='<div class="block-title" style="margin-top:12px;">Centro de votación</div>';
