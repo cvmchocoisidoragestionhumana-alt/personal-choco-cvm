@@ -130,7 +130,7 @@ tr:hover td{background:#fafafa;}
     </div>
   </div>
   <div class="wrap">
-    <div id="banner-lectura" class="banner" style="display:none;">Modo solo lectura — RRHH Caracas puede consultar pero no modificar datos.</div>
+    <div id="banner-lectura" class="banner" style="display:none;">Modo solo lectura — este usuario puede consultar pero no modificar datos.</div>
     <div class="kpis">
       <div class="kpi k-activo"><div class="l">Personal activo</div><div class="v" id="kpi-activo">0</div></div>
       <div class="kpi k-ingreso"><div class="l">Ingresos este mes</div><div class="v" id="kpi-ingreso">0</div></div>
@@ -632,10 +632,10 @@ function renderMovimientos(){
         estadoAprobacion:'Pendiente', campoAfectado:campo,
         valorAnterior:(w[campo]||''), valorPropuesto:nuevo
       };
-      // NO se toca personal/ced/... hasta que Caracas apruebe
+      // NO se toca personal/ced/... hasta que se apruebe
       msg.textContent = 'Guardando...';
       window.db.ref().update(upd).then(function(){
-        msg.innerHTML = '<span style="color:var(--ambar)">⏳ Movimiento registrado como PENDIENTE por aprobación de Caracas para '+w.apellidos+', '+w.nombres+'. El cambio se aplicará al aprobarlo.</span>';
+        msg.innerHTML = '<span style="color:var(--ambar)">⏳ Movimiento registrado como PENDIENTE de aprobación para '+w.apellidos+', '+w.nombres+'. El cambio se aplicará al aprobarlo.</span>';
         document.getElementById('qm-cedula').value='';
         document.getElementById('qm-detalle').value='';
         document.getElementById('qm-nuevo').value='';
@@ -717,7 +717,7 @@ function renderMovimientos(){
           var estAprob='';
           if(m.estadoAprobacion){
             var ep=m.estadoAprobacion==='Pendiente'?'p-pendiente':m.estadoAprobacion==='Aprobado'?'p-aprobado':'p-rechazado';
-            var etxt=m.estadoAprobacion==='Pendiente'?'⏳ Pendiente Caracas':m.estadoAprobacion==='Aprobado'?'✓ Aprobado Caracas':'✕ Rechazado';
+            var etxt=m.estadoAprobacion==='Pendiente'?'⏳ Pendiente':m.estadoAprobacion==='Aprobado'?'✓ Aprobado':'✕ Rechazado';
             estAprob=' <span class="pill '+ep+'">'+etxt+'</span>';
             if(m.estadoAprobacion==='Aprobado'&&m.puntoCuenta) estAprob+=' <span class="muted">PC: '+m.puntoCuenta+'</span>';
           }
@@ -766,7 +766,7 @@ function renderMovimientos(){
         var w = PERSONAL[m.cedula];
         if(!w){ alert('El trabajador ya no existe en el sistema.'); return; }
         var etiqueta = (m.campoAfectado==='cargo') ? 'cargo' : 'unidad de adscripción';
-        var confirmar = confirm('¿Confirmar que CARACAS APROBÓ este cambio?\n\n'
+        var confirmar = confirm('¿Confirmar la aprobación de este cambio?\n\n'
           +'Trabajador: '+(m.nombre||'')+'\n'
           +'Cambio de '+etiqueta+':\n'
           +'   Anterior: '+(m.valorAnterior||'(vacío)')+'\n'
